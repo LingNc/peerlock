@@ -69,6 +69,27 @@ class SecurePrefs(context: Context) {
         consumedEnvelopes = current
     }
 
+    // 配对材料
+    var peerPublicKey: String?
+        get() = prefs.getString("peer_public_key", null)
+        set(value) = prefs.edit().putString("peer_public_key", value).apply()
+
+    var encryptedSeedSetting: String?
+        get() = prefs.getString("enc_seed_setting", null)
+        set(value) = prefs.edit().putString("enc_seed_setting", value).apply()
+
+    var encryptedSeedUnlock: String?
+        get() = prefs.getString("enc_seed_unlock", null)
+        set(value) = prefs.edit().putString("enc_seed_unlock", value).apply()
+
+    var encryptedSeedDestroy: String?
+        get() = prefs.getString("enc_seed_destroy", null)
+        set(value) = prefs.edit().putString("enc_seed_destroy", value).apply()
+
+    var myPublicKey: String?
+        get() = prefs.getString("my_public_key", null)
+        set(value) = prefs.edit().putString("my_public_key", value).apply()
+
     fun clear() {
         prefs.edit().clear().apply()
     }
