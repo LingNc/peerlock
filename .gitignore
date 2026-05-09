@@ -8,9 +8,10 @@ build/
 *.iml
 .vscode/
 
-# Android SDK
+# Android SDK & build tools
 android-sdk/
 jdk-17/
+gradle-8.11.1/
 local.properties
 
 # Android build
