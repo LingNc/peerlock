@@ -12,12 +12,16 @@ interface CryptoEngine {
 
 data class CryptoKeyPair(
     val publicKey: ByteArray,
+    val signingPublicKey: ByteArray = publicKey, // P256: same as publicKey; X25519: Ed25519 key
     val privateKeyAlias: String
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is CryptoKeyPair) return false
-        return publicKey.contentEquals(other.publicKey) && privateKeyAlias == other.privateKeyAlias
+        return publicKey.contentEquals(other.publicKey) &&
+            signingPublicKey.contentEquals(other.signingPublicKey) &&
+            privateKeyAlias == other.privateKeyAlias
     }
-    override fun hashCode(): Int = 31 * publicKey.contentHashCode() + privateKeyAlias.hashCode()
+    override fun hashCode(): Int =
+        31 * (31 * publicKey.contentHashCode() + signingPublicKey.contentHashCode()) + privateKeyAlias.hashCode()
 }

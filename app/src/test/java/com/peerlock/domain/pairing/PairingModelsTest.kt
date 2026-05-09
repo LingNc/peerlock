@@ -23,7 +23,7 @@ class PairingModelsTest {
 
     @Test
     fun `PairingResponse 序列化往返一致`() {
-        val response = PairingResponse(data = "base64encodeddata")
+        val response = PairingResponse(pub = "pubKey", signPub = "signPubKey", data = "base64encodeddata")
         val encoded = json.encodeToString(PairingResponse.serializer(), response)
         val decoded = json.decodeFromString(PairingResponse.serializer(), encoded)
         assertEquals(response, decoded)

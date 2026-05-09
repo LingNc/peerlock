@@ -24,6 +24,8 @@ data class PairingRequest(
 @Serializable
 data class PairingResponse(
     val v: Int = 1,
+    val pub: String,             // Base64(控制端 ECDH 公钥)，用于解密
+    val signPub: String,         // Base64(控制端签名公钥)，用于验证签名
     val data: String,            // Base64(加密信封)
 )
 

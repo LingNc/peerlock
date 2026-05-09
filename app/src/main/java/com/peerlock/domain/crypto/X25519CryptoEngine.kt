@@ -49,6 +49,7 @@ class X25519CryptoEngine : CryptoEngine {
 
         return CryptoKeyPair(
             publicKey = x25519Public.encoded,
+            signingPublicKey = edPub.encoded,
             privateKeyAlias = "x25519_${System.nanoTime()}"
         )
     }
