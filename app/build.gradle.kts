@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.serialization)
 }
 
 android {
@@ -97,6 +98,9 @@ dependencies {
     implementation(libs.core.ktx)
     implementation(libs.activity.compose)
     implementation(libs.security.crypto)
+
+    // JSON 序列化
+    implementation(libs.serialization.json)
 
     // 测试
     testImplementation(libs.junit5.api)
