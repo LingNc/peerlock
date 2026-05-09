@@ -27,4 +27,6 @@ class AdaptiveCryptoEngine(
         delegate.verify(data, signature, peerPublicKey)
     override suspend fun deriveSharedSecret(peerPublicKey: ByteArray): ByteArray =
         delegate.deriveSharedSecret(peerPublicKey)
+    override suspend fun decryptWithPeer(data: ByteArray, peerPublicKey: ByteArray): ByteArray =
+        delegate.decryptWithPeer(data, peerPublicKey)
 }

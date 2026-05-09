@@ -72,9 +72,9 @@ class X25519CryptoEngine : CryptoEngine {
     }
 
     override suspend fun decrypt(data: ByteArray): ByteArray =
-        throw NotImplementedError("请使用 decryptWithPeerKey")
+        throw NotImplementedError("请使用 decryptWithPeer")
 
-    suspend fun decryptWithPeerKey(data: ByteArray, peerPublicKey: ByteArray): ByteArray {
+    override suspend fun decryptWithPeer(data: ByteArray, peerPublicKey: ByteArray): ByteArray {
         val currentPrivate = x25519PrivateKey ?: throw IllegalStateException("尚未生成密钥对")
         val sharedSecret = ecdh(currentPrivate, peerPublicKey)
         val aesKey = deriveAesKey(sharedSecret)

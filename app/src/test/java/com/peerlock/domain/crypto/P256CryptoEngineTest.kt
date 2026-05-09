@@ -31,7 +31,7 @@ class P256CryptoEngineTest {
         val encrypted = engine.encrypt(plaintext, keyPair.publicKey)
         assertNotEquals(plaintext.toList(), encrypted.toList())
 
-        val decrypted = engine.decryptWithPeerKey(encrypted, keyPair.publicKey)
+        val decrypted = engine.decryptWithPeer(encrypted, keyPair.publicKey)
         assertArrayEquals(plaintext, decrypted)
     }
 
@@ -66,5 +66,19 @@ class P256CryptoEngineTest {
         val secretBA = bob.deriveSharedSecret(aliceKeyPair.publicKey)
 
         assertArrayEquals(secretAB, secretBA)
+    }
+
+    @Test
+    fun `encrypt + decryptWithPeer 往返一致`() = runTest {
+        val alice = P256CryptoEngine()
+        val bob = P256CryptoEngine()
+        val aliceKeyPair = alice.generateKeyPair()
+        val bobKeyPair = bob.generateKeyPair()
+        val plaintext = "配对数据".toByteArray()
+
+        val encrypted = alice.encrypt(plaintext, bobKeyPair.publicKey)
+        val decrypted = bob.decryptWithPeer(encrypted, aliceKeyPair.publicKey)
+
+        assertArrayEquals(plaintext, decrypted)
     }
 }

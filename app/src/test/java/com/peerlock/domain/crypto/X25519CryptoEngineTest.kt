@@ -54,4 +54,18 @@ class X25519CryptoEngineTest {
         assertArrayEquals(secretAB, secretBA)
         assertEquals(32, secretAB.size)
     }
+
+    @Test
+    fun `encrypt + decryptWithPeer 往返一致`() = runTest {
+        val alice = X25519CryptoEngine()
+        val bob = X25519CryptoEngine()
+        val aliceKeyPair = alice.generateKeyPair()
+        val bobKeyPair = bob.generateKeyPair()
+        val plaintext = "配对数据".toByteArray()
+
+        val encrypted = alice.encrypt(plaintext, bobKeyPair.publicKey)
+        val decrypted = bob.decryptWithPeer(encrypted, aliceKeyPair.publicKey)
+
+        assertArrayEquals(plaintext, decrypted)
+    }
 }

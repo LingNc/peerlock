@@ -7,6 +7,7 @@ interface CryptoEngine {
     suspend fun sign(data: ByteArray): ByteArray
     suspend fun verify(data: ByteArray, signature: ByteArray, peerPublicKey: ByteArray): Boolean
     suspend fun deriveSharedSecret(peerPublicKey: ByteArray): ByteArray
+    suspend fun decryptWithPeer(data: ByteArray, peerPublicKey: ByteArray): ByteArray
 }
 
 data class CryptoKeyPair(
