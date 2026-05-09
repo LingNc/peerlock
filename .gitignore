@@ -8,8 +8,11 @@ build/
 *.iml
 .vscode/
 
-# Android
+# Android SDK
+android-sdk/
 local.properties
+
+# Android build
 captures/
 *.apk
 *.aab
