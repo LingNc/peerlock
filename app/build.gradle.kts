@@ -48,6 +48,10 @@ android {
             excludes += "META-INF/versions/9/OSGI-INF/**"
         }
     }
+
+    ksp {
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
 }
 
 dependencies {

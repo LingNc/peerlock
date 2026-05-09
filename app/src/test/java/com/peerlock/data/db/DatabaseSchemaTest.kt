@@ -9,7 +9,7 @@ class DatabaseSchemaTest {
     fun `数据库类存在且注解正确`() {
         val dbClass = PeerLockDatabase::class.java
         assertNotNull(dbClass)
-        assertTrue(dbClass.interfaces.any { it == androidx.room.RoomDatabase::class.java })
+        assertTrue(androidx.room.RoomDatabase::class.java.isAssignableFrom(dbClass))
     }
 
     @Test
