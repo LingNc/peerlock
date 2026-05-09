@@ -10,6 +10,7 @@ build/
 
 # Android SDK
 android-sdk/
+jdk-17/
 local.properties
 
 # Android build
