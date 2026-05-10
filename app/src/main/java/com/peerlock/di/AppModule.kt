@@ -15,6 +15,10 @@ import com.peerlock.domain.pairing.PairingProtocolImpl
 import com.peerlock.domain.policy.PolicyEngine
 import com.peerlock.domain.policy.PolicyEngineImpl
 import com.peerlock.domain.repository.StorageRepository
+import com.peerlock.domain.security.SafeModeManager
+import com.peerlock.domain.security.SafeModeManagerImpl
+import com.peerlock.domain.security.TimeSyncManager
+import com.peerlock.domain.security.TimeSyncManagerImpl
 import com.peerlock.domain.totp.TotpEngine
 import com.peerlock.domain.totp.TotpEngineImpl
 import com.peerlock.system.deviceadmin.DeviceOwnerManager
@@ -83,4 +87,14 @@ object AppModule {
         storageRepository, usageStatsCollector, deviceOwnerManager,
         seedManager, totpEngine, securePrefs
     )
+
+    @Provides @Singleton
+    fun provideTimeSyncManager(securePrefs: SecurePrefs): TimeSyncManager =
+        TimeSyncManagerImpl(securePrefs)
+
+    @Provides @Singleton
+    fun provideSafeModeManager(
+        securePrefs: SecurePrefs,
+        storageRepository: StorageRepository,
+    ): SafeModeManager = SafeModeManagerImpl(securePrefs, storageRepository)
 }

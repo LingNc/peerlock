@@ -3,6 +3,9 @@ package com.peerlock.data.db
 import android.content.Context
 import androidx.room.Room
 import com.peerlock.data.db.dao.*
+import com.peerlock.data.prefs.SecurePrefs
+import com.peerlock.data.usage.UsageAggregator
+import com.peerlock.data.usage.UsageAggregatorImpl
 import com.peerlock.domain.repository.StorageRepository
 import com.peerlock.domain.repository.StorageRepositoryImpl
 import dagger.Module
@@ -48,5 +51,16 @@ object DatabaseModule {
         auditLogDao: AuditLogDao,
     ): StorageRepository = StorageRepositoryImpl(
         usageRecordDao, hourlySummaryDao, dailySummaryDao, policyDao, auditLogDao
+    )
+
+    @Provides
+    @Singleton
+    fun provideUsageAggregator(
+        usageRecordDao: UsageRecordDao,
+        hourlySummaryDao: HourlySummaryDao,
+        dailySummaryDao: DailySummaryDao,
+        securePrefs: SecurePrefs,
+    ): UsageAggregator = UsageAggregatorImpl(
+        usageRecordDao, hourlySummaryDao, dailySummaryDao, securePrefs
     )
 }

@@ -7,9 +7,12 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
+import com.peerlock.data.usage.UsageAggregator
 import com.peerlock.data.usage.UsageStatsCollector
 import com.peerlock.domain.policy.PolicyEngine
 import com.peerlock.domain.repository.StorageRepository
+import com.peerlock.domain.security.SafeModeManager
+import com.peerlock.domain.security.TimeSyncManager
 import com.peerlock.system.deviceadmin.DeviceOwnerManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
@@ -35,6 +38,9 @@ class PeerLockService : Service() {
     @Inject lateinit var usageCollector: UsageStatsCollector
     @Inject lateinit var storageRepository: StorageRepository
     @Inject lateinit var deviceOwnerManager: DeviceOwnerManager
+    @Inject lateinit var timeSyncManager: TimeSyncManager
+    @Inject lateinit var safeModeManager: SafeModeManager
+    @Inject lateinit var usageAggregator: UsageAggregator
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var patrolJob: Job? = null
@@ -54,7 +60,10 @@ class PeerLockService : Service() {
         }
 
         if (!::patrolLogic.isInitialized) {
-            patrolLogic = PatrolLogic(policyEngine, usageCollector, storageRepository, deviceOwnerManager)
+            patrolLogic = PatrolLogic(
+                policyEngine, usageCollector, storageRepository, deviceOwnerManager,
+                timeSyncManager, safeModeManager, usageAggregator
+            )
         }
 
         startPatrolLoop()
