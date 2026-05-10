@@ -10,6 +10,8 @@ import com.peerlock.data.usage.UsageStatsCollector
 import com.peerlock.data.usage.UsageStatsCollectorImpl
 import com.peerlock.domain.crypto.AdaptiveCryptoEngine
 import com.peerlock.domain.crypto.CryptoEngine
+import com.peerlock.domain.emergency.EmergencyManager
+import com.peerlock.domain.emergency.EmergencyManagerImpl
 import com.peerlock.domain.pairing.PairingProtocol
 import com.peerlock.domain.pairing.PairingProtocolImpl
 import com.peerlock.domain.policy.PolicyEngine
@@ -122,5 +124,16 @@ object AppModule {
     ): RequestProtocol = RequestProtocolImpl(
         envelopeCrypto, totpEngine, seedManager, policyEngine,
         storageRepository, requestGuard, securePrefs
+    )
+
+    @Provides @Singleton
+    fun provideEmergencyManager(
+        securePrefs: SecurePrefs,
+        seedManager: SeedManager,
+        totpEngine: TotpEngine,
+        storageRepository: StorageRepository,
+        deviceOwnerManager: DeviceOwnerManager,
+    ): EmergencyManager = EmergencyManagerImpl(
+        securePrefs, seedManager, totpEngine, storageRepository, deviceOwnerManager
     )
 }
