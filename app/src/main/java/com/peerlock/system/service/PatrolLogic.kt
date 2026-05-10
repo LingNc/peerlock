@@ -6,6 +6,7 @@ import com.peerlock.data.usage.UsageAggregator
 import com.peerlock.data.usage.UsageStatsCollector
 import com.peerlock.domain.policy.PolicyAction
 import com.peerlock.domain.policy.PolicyEngine
+import com.peerlock.domain.repository.AuditLog
 import com.peerlock.domain.repository.StorageRepository
 import com.peerlock.domain.repository.UsageRecord
 import com.peerlock.domain.security.SafeModeManager
@@ -71,9 +72,25 @@ class PatrolLogic(
             when (action) {
                 is PolicyAction.Suspend -> {
                     policyEngine.suspendApp(policy.targetPackage)
+                    storageRepository.insertAuditLog(
+                        AuditLog(
+                            timestamp = now,
+                            action = "SUSPEND",
+                            targetPackage = policy.targetPackage,
+                            detail = "巡检触发暂停：${policy.targetPackage}"
+                        )
+                    )
                 }
                 is PolicyAction.Unsuspend -> {
                     policyEngine.unsuspendApp(policy.targetPackage)
+                    storageRepository.insertAuditLog(
+                        AuditLog(
+                            timestamp = now,
+                            action = "UNSUSPEND",
+                            targetPackage = policy.targetPackage,
+                            detail = "巡检触发恢复：${policy.targetPackage}"
+                        )
+                    )
                 }
                 is PolicyAction.Unlock -> {
                     // 解锁由 verifyUnlockCode 处理
