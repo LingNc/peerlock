@@ -1,5 +1,6 @@
 package com.peerlock.ui.onboarding
 
+import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.peerlock.domain.pairing.PairingProtocol
@@ -35,6 +36,9 @@ class OnboardingViewModel @Inject constructor(
     private val pairingProtocol: PairingProtocol,
 ) : ViewModel() {
 
+    private val deviceName: String
+        get() = "${Build.MANUFACTURER} ${Build.MODEL}"
+
     private val _uiState = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
 
@@ -49,7 +53,7 @@ class OnboardingViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                val request = pairingProtocol.generatePairRequest("被控端")
+                val request = pairingProtocol.generatePairRequest(deviceName)
                 _uiState.value = _uiState.value.copy(
                     pairRequest = request,
                     pairRequestQr = request.pub,
@@ -79,9 +83,9 @@ class OnboardingViewModel @Inject constructor(
                 val request = PairingRequest(
                     id = "",
                     pub = scannedPubKey,
-                    name = "被控端",
+                    name = deviceName,
                 )
-                val response = pairingProtocol.processPairRequest(request, "控制端")
+                val response = pairingProtocol.processPairRequest(request, deviceName)
                 _uiState.value = _uiState.value.copy(
                     pairResponseQr = response.data,
                     step = OnboardingStep.SCAN_PEER_QR,
