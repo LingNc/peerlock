@@ -1,7 +1,7 @@
 package com.peerlock.ui.stats
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.peerlock.domain.repository.DailySummary
@@ -196,7 +197,22 @@ private fun HourlyBarChart(
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(180.dp),
+                .height(180.dp)
+                .pointerInput(values, maxMinutes) {
+                    detectTapGestures { offset ->
+                        val barWidth = size.width / 28f
+                        val maxHeight = size.height - 20f
+                        // 判断点击落在哪个小时的柱子上
+                        val hour = ((offset.x - barWidth / 2) / (size.width / 26f)).toInt().coerceIn(0, 23)
+                        // 验证点击在柱子高度范围内
+                        val minutes = (values[hour] ?: 0L) / 60_000.0
+                        val barHeight = (minutes / maxMinutes * maxHeight).toFloat()
+                        val barTop = size.height - barHeight
+                        if (offset.y >= barTop && values[hour] > 0L) {
+                            onHourClick(hour)
+                        }
+                    }
+                },
         ) {
             val barWidth = size.width / 28f
             val maxHeight = size.height - 20f
@@ -255,7 +271,21 @@ private fun DailyLineChart(
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(180.dp),
+                .height(180.dp)
+                .pointerInput(sortedDates, values, maxMinutes) {
+                    detectTapGestures { offset ->
+                        if (values.size < 2) return@detectTapGestures
+                        val stepX = size.width / (values.size - 1).coerceAtLeast(1)
+                        val maxHeight = size.height - 20f
+                        // Find closest data point
+                        val idx = (offset.x / stepX).toInt().coerceIn(0, sortedDates.size - 1)
+                        val minutes = values[idx] / 60_000.0
+                        val expectedY = size.height - (minutes / maxMinutes * maxHeight).toFloat()
+                        if (kotlin.math.abs(offset.y - expectedY) < 40f) {
+                            onDateClick(sortedDates[idx])
+                        }
+                    }
+                },
         ) {
             if (values.size < 2) return@Canvas
             val stepX = size.width / (values.size - 1).coerceAtLeast(1)
