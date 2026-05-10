@@ -18,6 +18,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -33,6 +34,7 @@ import com.peerlock.ui.common.StatusCard
 @Composable
 fun ControlledHomeScreen(
     onRequestUnlock: () -> Unit = {},
+    onNavigateToStats: () -> Unit = {},
     viewModel: ControlledViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -64,6 +66,15 @@ fun ControlledHomeScreen(
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(top = 8.dp),
                 )
+            }
+
+            item {
+                OutlinedButton(
+                    onClick = onNavigateToStats,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("使用统计")
+                }
             }
 
             if (uiState.policies.isEmpty()) {

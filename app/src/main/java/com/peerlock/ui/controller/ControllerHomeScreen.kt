@@ -42,6 +42,7 @@ fun ControllerHomeScreen(
     onNavigateToUnlockRequest: () -> Unit = {},
     onNavigateToApproval: () -> Unit = {},
     onNavigateToEmergency: () -> Unit = {},
+    onNavigateToStats: () -> Unit = {},
     viewModel: ControllerViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -82,6 +83,15 @@ fun ControllerHomeScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("紧急逃生")
+                }
+            }
+
+            item {
+                OutlinedButton(
+                    onClick = onNavigateToStats,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("使用统计")
                 }
             }
 

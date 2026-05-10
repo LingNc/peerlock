@@ -16,6 +16,7 @@ import com.peerlock.ui.emergency.EmergencyScreen
 import com.peerlock.ui.onboarding.DeviceOwnerSetupScreen
 import com.peerlock.ui.onboarding.PairingScreen
 import com.peerlock.ui.onboarding.RoleSelectionScreen
+import com.peerlock.ui.stats.StatsScreen
 
 object Routes {
     const val ROLE_SELECTION = "role_selection"
@@ -26,6 +27,7 @@ object Routes {
     const val REQUEST_APPROVAL = "request_approval"
     const val EMERGENCY = "emergency"
     const val DEVICE_OWNER_SETUP = "device_owner_setup"
+    const val STATS = "stats"
 
     fun pairing(role: String) = "pairing/$role"
 }
@@ -74,12 +76,14 @@ fun PeerLockNavHost(
                 onNavigateToUnlockRequest = { navController.navigate(Routes.UNLOCK_REQUEST) },
                 onNavigateToApproval = { navController.navigate(Routes.REQUEST_APPROVAL) },
                 onNavigateToEmergency = { navController.navigate(Routes.EMERGENCY) },
+                onNavigateToStats = { navController.navigate(Routes.STATS) },
             )
         }
 
         composable(Routes.CONTROLLED_HOME) {
             ControlledHomeScreen(
-                onRequestUnlock = { navController.navigate(Routes.UNLOCK_REQUEST) }
+                onRequestUnlock = { navController.navigate(Routes.UNLOCK_REQUEST) },
+                onNavigateToStats = { navController.navigate(Routes.STATS) },
             )
         }
 
@@ -117,6 +121,12 @@ fun PeerLockNavHost(
                         popUpTo(0) { inclusive = true }
                     }
                 },
+            )
+        }
+
+        composable(Routes.STATS) {
+            StatsScreen(
+                onBack = { navController.popBackStack() },
             )
         }
     }
