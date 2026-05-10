@@ -19,8 +19,12 @@ import com.peerlock.domain.security.SafeModeManager
 import com.peerlock.domain.security.SafeModeManagerImpl
 import com.peerlock.domain.security.TimeSyncManager
 import com.peerlock.domain.security.TimeSyncManagerImpl
+import com.peerlock.domain.totp.EnvelopeCrypto
 import com.peerlock.domain.totp.TotpEngine
 import com.peerlock.domain.totp.TotpEngineImpl
+import com.peerlock.domain.request.RequestGuard
+import com.peerlock.domain.request.RequestProtocol
+import com.peerlock.domain.request.RequestProtocolImpl
 import com.peerlock.system.deviceadmin.DeviceOwnerManager
 import com.peerlock.system.deviceadmin.DeviceOwnerManagerImpl
 import dagger.Module
@@ -97,4 +101,26 @@ object AppModule {
         securePrefs: SecurePrefs,
         storageRepository: StorageRepository,
     ): SafeModeManager = SafeModeManagerImpl(securePrefs, storageRepository)
+
+    @Provides @Singleton
+    fun provideEnvelopeCrypto(cryptoEngine: CryptoEngine): EnvelopeCrypto =
+        EnvelopeCrypto(cryptoEngine)
+
+    @Provides @Singleton
+    fun provideRequestGuard(securePrefs: SecurePrefs): RequestGuard =
+        RequestGuard(securePrefs)
+
+    @Provides @Singleton
+    fun provideRequestProtocol(
+        envelopeCrypto: EnvelopeCrypto,
+        totpEngine: TotpEngine,
+        seedManager: SeedManager,
+        policyEngine: PolicyEngine,
+        storageRepository: StorageRepository,
+        requestGuard: RequestGuard,
+        securePrefs: SecurePrefs,
+    ): RequestProtocol = RequestProtocolImpl(
+        envelopeCrypto, totpEngine, seedManager, policyEngine,
+        storageRepository, requestGuard, securePrefs
+    )
 }
