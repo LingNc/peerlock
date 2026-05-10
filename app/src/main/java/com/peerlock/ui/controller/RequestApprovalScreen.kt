@@ -14,16 +14,22 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -85,21 +91,80 @@ fun RequestApprovalScreen(
                 ApprovalStep.REVIEWING -> {
                     uiState.pendingRequest?.let { request ->
                         RequestDetailCard(request)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            OutlinedButton(
-                                onClick = { viewModel.rejectRequest() },
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text("拒绝")
+
+                        // 时长/模式调整控件（仅 unlock 类型）
+                        val payload = request.payload
+                        if (payload is com.peerlock.domain.request.RequestPayload.UnlockRequest) {
+                            var adjustedDuration by remember { mutableIntStateOf(payload.requestedDuration) }
+                            var adjustedMode by remember { mutableStateOf(payload.durationMode) }
+
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text("调整解锁参数", style = MaterialTheme.typography.titleSmall)
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    Text("解锁时长: ${adjustedDuration} 分钟", style = MaterialTheme.typography.bodyMedium)
+                                    Slider(
+                                        value = adjustedDuration.toFloat(),
+                                        onValueChange = { adjustedDuration = it.toInt() },
+                                        valueRange = 5f..180f,
+                                        steps = 34,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text("时长模式", style = MaterialTheme.typography.bodySmall)
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        FilterChip(
+                                            selected = adjustedMode == "cumulative",
+                                            onClick = { adjustedMode = "cumulative" },
+                                            label = { Text("累计") },
+                                        )
+                                        FilterChip(
+                                            selected = adjustedMode == "session",
+                                            onClick = { adjustedMode = "session" },
+                                            label = { Text("单次") },
+                                        )
+                                    }
+                                }
                             }
-                            Button(
-                                onClick = { viewModel.approveRequest() },
-                                modifier = Modifier.weight(1f),
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                Text("批准")
+                                OutlinedButton(
+                                    onClick = { viewModel.rejectRequest() },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text("拒绝")
+                                }
+                                Button(
+                                    onClick = { viewModel.approveRequest(adjustedDuration, adjustedMode) },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text("批准")
+                                }
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                OutlinedButton(
+                                    onClick = { viewModel.rejectRequest() },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text("拒绝")
+                                }
+                                Button(
+                                    onClick = { viewModel.approveRequest() },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text("批准")
+                                }
                             }
                         }
                     }
