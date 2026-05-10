@@ -13,6 +13,9 @@ interface UsageStatsCollector {
 
     /** 获取当前前台应用包名（null = 无前台应用） */
     fun getCurrentForegroundPackage(): String?
+
+    /** 基于 UsageEvents 计算各应用在指定时间段内的前台时长（30 秒粒度） */
+    fun queryForegroundDurations(startMs: Long, endMs: Long): List<AppUsageInfo>
 }
 
 data class AppUsageInfo(

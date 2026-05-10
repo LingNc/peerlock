@@ -28,6 +28,10 @@ class PatrolLogic(
     private val usageAggregator: UsageAggregator,
     private val securePrefs: SecurePrefs,
 ) {
+    companion object {
+        private const val PATROL_INTERVAL_MS = 30_000L
+    }
+
     suspend fun executePatrol() {
         collectUsageRecords()
         scheduleAggregation()
@@ -83,17 +87,18 @@ class PatrolLogic(
 
     private suspend fun collectUsageRecords() {
         val now = System.currentTimeMillis()
-        val hourStartMs = now - (now % 3_600_000L)
+        // 30 秒粒度：从上次巡检到现在
+        val windowStart = now - PATROL_INTERVAL_MS
         val date = Instant.ofEpochMilli(now)
             .atZone(ZoneId.systemDefault())
             .toLocalDate().toString()
 
-        val stats = usageCollector.queryUsageStats(hourStartMs, now)
+        val stats = usageCollector.queryForegroundDurations(windowStart, now)
         for (stat in stats) {
             storageRepository.insertUsageRecord(
                 UsageRecord(
                     packageName = stat.packageName,
-                    startTime = hourStartMs,
+                    startTime = windowStart,
                     endTime = now,
                     durationMs = stat.totalTimeMs,
                     date = date,

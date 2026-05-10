@@ -50,4 +50,44 @@ class UsageStatsCollectorImpl(
         }
         return lastForegroundPackage
     }
+
+    override fun queryForegroundDurations(startMs: Long, endMs: Long): List<AppUsageInfo> {
+        val events = usageStatsManager.queryEvents(startMs, endMs)
+        val foregroundStarts = mutableMapOf<String, Long>()
+        val durations = mutableMapOf<String, Long>()
+        val event = UsageEvents.Event()
+
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            when (event.eventType) {
+                UsageEvents.Event.ACTIVITY_RESUMED -> {
+                    foregroundStarts[event.packageName] = event.timeStamp
+                }
+                UsageEvents.Event.ACTIVITY_PAUSED -> {
+                    val pkg = event.packageName
+                    val start = foregroundStarts.remove(pkg)
+                    if (start != null) {
+                        val dur = event.timeStamp - start
+                        durations[pkg] = (durations[pkg] ?: 0L) + dur
+                    }
+                }
+            }
+        }
+
+        // 对仍在前台的应用，计算到 endMs 的时长
+        for ((pkg, start) in foregroundStarts) {
+            val dur = endMs - start
+            durations[pkg] = (durations[pkg] ?: 0L) + dur
+        }
+
+        return durations
+            .filter { it.value > 0 }
+            .map { (pkg, dur) ->
+                AppUsageInfo(
+                    packageName = pkg,
+                    totalTimeMs = dur,
+                    lastUsedMs = endMs,
+                )
+            }
+    }
 }
