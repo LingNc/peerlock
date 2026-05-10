@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +40,7 @@ import com.peerlock.ui.common.StatusCard
 @Composable
 fun ControllerHomeScreen(
     onNavigateToUnlockRequest: () -> Unit = {},
+    onNavigateToApproval: () -> Unit = {},
     viewModel: ControllerViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -62,6 +64,15 @@ fun ControllerHomeScreen(
                     subtitle = "策略巡检运行中",
                     icon = Icons.Default.Lock,
                 )
+            }
+
+            item {
+                Button(
+                    onClick = onNavigateToApproval,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("审批请求")
+                }
             }
 
             item {

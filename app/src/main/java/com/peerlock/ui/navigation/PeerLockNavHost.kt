@@ -11,6 +11,7 @@ import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.ui.controlled.ControlledHomeScreen
 import com.peerlock.ui.controlled.UnlockRequestScreen
 import com.peerlock.ui.controller.ControllerHomeScreen
+import com.peerlock.ui.controller.RequestApprovalScreen
 import com.peerlock.ui.onboarding.PairingScreen
 import com.peerlock.ui.onboarding.RoleSelectionScreen
 
@@ -20,6 +21,7 @@ object Routes {
     const val CONTROLLER_HOME = "controller_home"
     const val CONTROLLED_HOME = "controlled_home"
     const val UNLOCK_REQUEST = "unlock_request"
+    const val REQUEST_APPROVAL = "request_approval"
 
     fun pairing(role: String) = "pairing/$role"
 }
@@ -67,7 +69,8 @@ fun PeerLockNavHost(
 
         composable(Routes.CONTROLLER_HOME) {
             ControllerHomeScreen(
-                onNavigateToUnlockRequest = { navController.navigate(Routes.UNLOCK_REQUEST) }
+                onNavigateToUnlockRequest = { navController.navigate(Routes.UNLOCK_REQUEST) },
+                onNavigateToApproval = { navController.navigate(Routes.REQUEST_APPROVAL) },
             )
         }
 
@@ -80,6 +83,12 @@ fun PeerLockNavHost(
         composable(Routes.UNLOCK_REQUEST) {
             UnlockRequestScreen(
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.REQUEST_APPROVAL) {
+            RequestApprovalScreen(
+                onBack = { navController.popBackStack() },
             )
         }
     }
