@@ -18,6 +18,9 @@ data class EmergencyUiState(
     val isLocked: Boolean = false,
     val error: String? = null,
     // L2
+    val l2ChallengeCode: String? = null,
+    val l2ChallengeVerified: Boolean = false,
+    val l2ChallengeInput: String = "",
     val adbCommand: String? = null,
     val l2Executed: Boolean = false,
 )
@@ -59,10 +62,28 @@ class EmergencyViewModel @Inject constructor(
     }
 
     fun generateAdbCommand() {
-        val nonce = emergencyManager.generateNonce()
-        val pkg = application.packageName
-        val cmd = "adb shell am broadcast -a com.peerlock.EMERGENCY_L2 --es nonce \"$nonce\" -p $pkg"
-        _uiState.value = _uiState.value.copy(adbCommand = cmd)
+        // 先生成 4 位 hex 挑战码
+        val challengeBytes = ByteArray(2)
+        java.security.SecureRandom().nextBytes(challengeBytes)
+        val challenge = challengeBytes.joinToString("") { "%02X".format(it) }
+        _uiState.value = _uiState.value.copy(l2ChallengeCode = challenge, l2ChallengeVerified = false, l2ChallengeInput = "")
+    }
+
+    fun updateL2ChallengeInput(input: String) {
+        _uiState.value = _uiState.value.copy(l2ChallengeInput = input.uppercase(), error = null)
+    }
+
+    fun verifyL2Challenge() {
+        val expected = _uiState.value.l2ChallengeCode
+        val input = _uiState.value.l2ChallengeInput
+        if (input == expected) {
+            val nonce = emergencyManager.generateNonce()
+            val pkg = application.packageName
+            val cmd = "adb shell am broadcast -a com.peerlock.ACTION_EMERGENCY --es unlock_nonce \"$nonce\" -p $pkg"
+            _uiState.value = _uiState.value.copy(l2ChallengeVerified = true, adbCommand = cmd)
+        } else {
+            _uiState.value = _uiState.value.copy(error = "挑战码错误")
+        }
     }
 
     fun clearError() {

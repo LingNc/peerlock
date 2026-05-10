@@ -137,17 +137,42 @@ fun EmergencyScreen(
                     style = MaterialTheme.typography.bodyMedium,
                 )
 
-                OutlinedButton(
-                    onClick = { viewModel.generateAdbCommand() },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("生成 ADB 命令")
-                }
-
-                uiState.adbCommand?.let { cmd ->
+                if (uiState.l2ChallengeCode == null) {
+                    OutlinedButton(
+                        onClick = { viewModel.generateAdbCommand() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("开始验证")
+                    }
+                } else if (!uiState.l2ChallengeVerified) {
+                    // 挑战码验证步骤
+                    Text(
+                        text = "请记录以下挑战码：${uiState.l2ChallengeCode}",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Text(
+                        "输入上方挑战码以确认操作：",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    OutlinedTextField(
+                        value = uiState.l2ChallengeInput,
+                        onValueChange = { viewModel.updateL2ChallengeInput(it) },
+                        label = { Text("挑战码") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Button(
+                        onClick = { viewModel.verifyL2Challenge() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("验证")
+                    }
+                } else {
+                    // 验证通过，显示 ADB 命令
                     Text("请在电脑终端执行以下命令：", style = MaterialTheme.typography.bodySmall)
                     Text(
-                        text = cmd,
+                        text = uiState.adbCommand ?: "",
                         style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                         maxLines = 4,
                         overflow = TextOverflow.Ellipsis,
