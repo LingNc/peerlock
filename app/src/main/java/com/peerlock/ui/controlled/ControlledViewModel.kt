@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.data.seed.SeedManager
+import com.peerlock.data.usage.UsageStatsCollector
 import com.peerlock.domain.policy.PolicyEngine
 import com.peerlock.domain.policy.RestrictionPolicy
 import com.peerlock.domain.repository.StorageRepository
@@ -35,6 +36,7 @@ class ControlledViewModel @Inject constructor(
     private val totpEngine: TotpEngine,
     private val seedManager: SeedManager,
     private val policyEngine: PolicyEngine,
+    private val usageStatsCollector: UsageStatsCollector,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ControlledUiState())
@@ -47,8 +49,15 @@ class ControlledViewModel @Inject constructor(
     private fun loadData() {
         viewModelScope.launch {
             val policies = storageRepository.getActivePolicies()
+            val todayStart = java.time.LocalDate.now()
+                .atStartOfDay(java.time.ZoneId.systemDefault())
+                .toInstant().toEpochMilli()
+            val now = System.currentTimeMillis()
+            val stats = usageStatsCollector.queryUsageStats(todayStart, now)
+            val screenTimeMs = stats.sumOf { it.totalTimeMs }
             _uiState.value = _uiState.value.copy(
                 policies = policies,
+                todayScreenTimeMs = screenTimeMs,
                 isLoading = false,
             )
         }
