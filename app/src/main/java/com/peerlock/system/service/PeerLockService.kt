@@ -146,8 +146,19 @@ class PeerLockService : Service() {
             .build()
     }
 
-    private fun updateNotification() {
+    private suspend fun updateNotification() {
+        val policies = storageRepository.getActivePolicies()
+        val todayStart = java.time.LocalDate.now()
+            .atStartOfDay(java.time.ZoneId.systemDefault())
+            .toInstant().toEpochMilli()
+        val now = System.currentTimeMillis()
+        val stats = usageCollector.queryUsageStats(todayStart, now)
+        val totalScreenTimeMin = stats.sumOf { it.totalTimeMs } / 60_000
+
+        val title = "PeerLock 运行中"
+        val text = "今日屏幕时间: ${totalScreenTimeMin}分钟 | 受限应用: ${policies.size}个"
+
         val manager = getSystemService(NotificationManager::class.java)
-        manager.notify(NOTIFICATION_ID, buildNotification())
+        manager.notify(NOTIFICATION_ID, buildNotification(title, text))
     }
 }
