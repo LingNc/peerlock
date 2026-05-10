@@ -13,9 +13,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -43,13 +46,21 @@ fun ControllerHomeScreen(
     onNavigateToApproval: () -> Unit = {},
     onNavigateToEmergency: () -> Unit = {},
     onNavigateToStats: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     viewModel: ControllerViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("PeerLock 控制端") })
+            TopAppBar(
+                title = { Text("PeerLock 控制端") },
+                actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "设置")
+                    }
+                },
+            )
         }
     ) { padding ->
         LazyColumn(
