@@ -1,6 +1,7 @@
 package com.peerlock.ui.onboarding
 
 import android.app.Application
+import android.os.Build
 import androidx.lifecycle.ViewModel
 import com.peerlock.system.deviceadmin.DeviceOwnerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -12,6 +13,7 @@ import javax.inject.Inject
 data class DeviceOwnerSetupUiState(
     val isDeviceOwner: Boolean = false,
     val isChecked: Boolean = false,
+    val showWirelessGuide: Boolean = false,
 )
 
 @HiltViewModel
@@ -26,8 +28,15 @@ class DeviceOwnerSetupViewModel @Inject constructor(
     val adbCommand: String
         get() = "adb shell dpm set-device-owner ${application.packageName}/.system.deviceadmin.PeerLockDeviceAdminReceiver"
 
+    val supportsWirelessAdb: Boolean
+        get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R // Android 11+
+
     fun checkDeviceOwnerStatus() {
         val isOwner = deviceOwnerManager.isDeviceOwner()
         _uiState.value = _uiState.value.copy(isDeviceOwner = isOwner, isChecked = true)
+    }
+
+    fun toggleWirelessGuide() {
+        _uiState.value = _uiState.value.copy(showWirelessGuide = !_uiState.value.showWirelessGuide)
     }
 }
