@@ -41,6 +41,7 @@ import com.peerlock.ui.common.StatusCard
 fun ControllerHomeScreen(
     onNavigateToUnlockRequest: () -> Unit = {},
     onNavigateToApproval: () -> Unit = {},
+    onNavigateToEmergency: () -> Unit = {},
     viewModel: ControllerViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -72,6 +73,15 @@ fun ControllerHomeScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("审批请求")
+                }
+            }
+
+            item {
+                OutlinedButton(
+                    onClick = onNavigateToEmergency,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("紧急逃生")
                 }
             }
 
