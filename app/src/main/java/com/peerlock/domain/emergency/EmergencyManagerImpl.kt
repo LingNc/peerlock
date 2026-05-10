@@ -82,18 +82,7 @@ class EmergencyManagerImpl(
     }
 
     private fun clearCryptoMaterial() {
-        securePrefs.peerPublicKey = null
-        securePrefs.myPublicKey = null
-        securePrefs.encryptedSeedSetting = null
-        securePrefs.encryptedSeedUnlock = null
-        securePrefs.encryptedSeedDestroy = null
-        securePrefs.sessionId = null
-        securePrefs.isPaired = false
-        securePrefs.consumedEnvelopes = emptySet()
-        securePrefs.totpErrorCount = 0
-        securePrefs.totpLockedUntil = 0L
-        securePrefs.safeModeActive = false
-        securePrefs.safeModeReason = null
+        securePrefs.clearPairingData()
     }
 
     companion object {

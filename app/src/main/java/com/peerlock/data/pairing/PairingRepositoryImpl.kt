@@ -46,6 +46,6 @@ class PairingRepositoryImpl(
     override suspend fun isPaired(): Boolean = securePrefs.isPaired
 
     override suspend fun clearPairing() {
-        securePrefs.clear()
+        securePrefs.clearPairingData()
     }
 }
