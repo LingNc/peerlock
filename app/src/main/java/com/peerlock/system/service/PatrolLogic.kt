@@ -1,14 +1,18 @@
 package com.peerlock.system.service
 
+import com.peerlock.data.usage.AppUsageInfo
 import com.peerlock.data.usage.UsageAggregator
 import com.peerlock.data.usage.UsageStatsCollector
 import com.peerlock.domain.policy.PolicyAction
 import com.peerlock.domain.policy.PolicyEngine
 import com.peerlock.domain.repository.StorageRepository
+import com.peerlock.domain.repository.UsageRecord
 import com.peerlock.domain.security.SafeModeManager
 import com.peerlock.domain.security.SyncResult
 import com.peerlock.domain.security.TimeSyncManager
 import com.peerlock.system.deviceadmin.DeviceOwnerManager
+import java.time.Instant
+import java.time.ZoneId
 
 /**
  * 巡检逻辑：独立于 Android Service 生命周期，可单元测试。
@@ -23,6 +27,8 @@ class PatrolLogic(
     private val usageAggregator: UsageAggregator,
 ) {
     suspend fun executePatrol() {
+        collectUsageRecords()
+
         val now = System.currentTimeMillis()
 
         // 1. 检查时间可靠性
@@ -69,6 +75,27 @@ class PatrolLogic(
                     // 正常状态，无需操作
                 }
             }
+        }
+    }
+
+    private suspend fun collectUsageRecords() {
+        val now = System.currentTimeMillis()
+        val hourStartMs = now - (now % 3_600_000L)
+        val date = Instant.ofEpochMilli(now)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate().toString()
+
+        val stats = usageCollector.queryUsageStats(hourStartMs, now)
+        for (stat in stats) {
+            storageRepository.insertUsageRecord(
+                UsageRecord(
+                    packageName = stat.packageName,
+                    startTime = hourStartMs,
+                    endTime = now,
+                    durationMs = stat.totalTimeMs,
+                    date = date,
+                )
+            )
         }
     }
 }
