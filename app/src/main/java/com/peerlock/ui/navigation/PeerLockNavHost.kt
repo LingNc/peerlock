@@ -13,6 +13,7 @@ import com.peerlock.ui.controlled.UnlockRequestScreen
 import com.peerlock.ui.controller.ControllerHomeScreen
 import com.peerlock.ui.controller.RequestApprovalScreen
 import com.peerlock.ui.emergency.EmergencyScreen
+import com.peerlock.ui.onboarding.DeviceOwnerSetupScreen
 import com.peerlock.ui.onboarding.PairingScreen
 import com.peerlock.ui.onboarding.RoleSelectionScreen
 
@@ -24,6 +25,7 @@ object Routes {
     const val UNLOCK_REQUEST = "unlock_request"
     const val REQUEST_APPROVAL = "request_approval"
     const val EMERGENCY = "emergency"
+    const val DEVICE_OWNER_SETUP = "device_owner_setup"
 
     fun pairing(role: String) = "pairing/$role"
 }
@@ -60,9 +62,7 @@ fun PeerLockNavHost(
             PairingScreen(
                 role = role,
                 onPairingComplete = {
-                    val destination = if (role == "controller") Routes.CONTROLLER_HOME
-                    else Routes.CONTROLLED_HOME
-                    navController.navigate(destination) {
+                    navController.navigate(Routes.DEVICE_OWNER_SETUP) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
@@ -98,6 +98,25 @@ fun PeerLockNavHost(
         composable(Routes.EMERGENCY) {
             EmergencyScreen(
                 onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Routes.DEVICE_OWNER_SETUP) {
+            DeviceOwnerSetupScreen(
+                onContinue = {
+                    val destination = if (securePrefs.role == "controller") Routes.CONTROLLER_HOME
+                    else Routes.CONTROLLED_HOME
+                    navController.navigate(destination) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onSkip = {
+                    val destination = if (securePrefs.role == "controller") Routes.CONTROLLER_HOME
+                    else Routes.CONTROLLED_HOME
+                    navController.navigate(destination) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
             )
         }
     }
