@@ -17,6 +17,10 @@ data class EnvelopeConfig(
     val durationMinutes: Int? = null,
     val durationMode: String? = null,      // "cumulative" | "absolute"
     val absoluteEndTime: Long? = null,
+    val targetPackage: String? = null,
+    val requestDataJson: String? = null,   // 序列化的请求/响应数据
+    val approved: Boolean? = null,
+    val rejectReason: String? = null,
 )
 
 sealed class EnvelopeResult {

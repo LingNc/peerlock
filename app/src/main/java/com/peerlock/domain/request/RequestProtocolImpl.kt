@@ -5,10 +5,14 @@ import com.peerlock.data.seed.SeedManager
 import com.peerlock.domain.policy.PolicyEngine
 import com.peerlock.domain.policy.RestrictionPolicy
 import com.peerlock.domain.repository.StorageRepository
+import com.peerlock.domain.totp.EnvelopeConfig
 import com.peerlock.domain.totp.EnvelopeCrypto
+import com.peerlock.domain.totp.EnvelopeResult
 import com.peerlock.domain.totp.KeyType
 import com.peerlock.domain.totp.TotpEngine
 import com.peerlock.domain.totp.TotpEnvelope
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 import java.time.LocalTime
 import java.util.UUID
 
@@ -36,11 +40,17 @@ class RequestProtocolImpl(
         val nowSeconds = System.currentTimeMillis() / 1000
         val code = totpEngine.generateCode(seed)
 
+        val config = EnvelopeConfig(
+            durationMinutes = requestedDuration,
+            durationMode = durationMode,
+            targetPackage = targetPackage,
+        )
         val totpEnvelope = TotpEnvelope(
             type = "unlock",
             code = code,
             sessionId = sessionId,
             timestamp = nowSeconds,
+            config = config,
         )
 
         val peerPubKey = securePrefs.peerPublicKey ?: return null
@@ -62,11 +72,15 @@ class RequestProtocolImpl(
         val nowSeconds = System.currentTimeMillis() / 1000
         val code = totpEngine.generateCode(seed)
 
+        val config = EnvelopeConfig(
+            requestDataJson = Json.encodeToString(ListSerializer(PolicyChange.serializer()), changes),
+        )
         val totpEnvelope = TotpEnvelope(
             type = "setting",
             code = code,
             sessionId = sessionId,
             timestamp = nowSeconds,
+            config = config,
         )
 
         val peerPubKey = securePrefs.peerPublicKey ?: return null
@@ -87,6 +101,35 @@ class RequestProtocolImpl(
             return ProcessResult.Error("信封已过期")
         }
 
+        val seed = when (envelope.type) {
+            "unlock" -> seedManager.retrieveSeed(KeyType.UNLOCK)
+            "setting" -> seedManager.retrieveSeed(KeyType.SETTING)
+            else -> null
+        } ?: return ProcessResult.Error("无法获取对应密钥")
+
+        val verifyResult = totpEngine.verifyEnvelope(
+            envelope, seed, envelope.sessionId
+        )
+        if (verifyResult is EnvelopeResult.Invalid) {
+            return ProcessResult.Error("TOTP 验证失败: ${verifyResult.reason}")
+        }
+
+        val config = envelope.config
+        val payload = when (envelope.type) {
+            "unlock" -> RequestPayload.UnlockRequest(
+                targetPackage = config?.targetPackage ?: "",
+                requestedDuration = config?.durationMinutes ?: 0,
+                durationMode = config?.durationMode ?: "cumulative",
+            )
+            "setting" -> {
+                val changes = config?.requestDataJson?.let {
+                    Json.decodeFromString(ListSerializer(PolicyChange.serializer()), it)
+                } ?: emptyList()
+                RequestPayload.ConfigRequest(changes = changes)
+            }
+            else -> return ProcessResult.Error("未知请求类型: ${envelope.type}")
+        }
+
         val request = RequestEnvelope(
             type = envelope.type,
             sessionId = envelope.sessionId,
@@ -97,11 +140,7 @@ class RequestProtocolImpl(
                 suspendedApps = emptyList(),
                 isInSafeMode = false,
             ),
-            payload = RequestPayload.UnlockRequest(
-                targetPackage = "",
-                requestedDuration = 0,
-                durationMode = "cumulative",
-            )
+            payload = payload,
         )
 
         return ProcessResult.Success(request)
@@ -117,11 +156,19 @@ class RequestProtocolImpl(
         val nowSeconds = System.currentTimeMillis() / 1000
         val code = totpEngine.generateCode(seed)
 
+        val unlockPayload = request.payload as? RequestPayload.UnlockRequest
+        val config = EnvelopeConfig(
+            targetPackage = unlockPayload?.targetPackage,
+            durationMinutes = duration,
+            durationMode = durationMode,
+            approved = approved,
+        )
         val totpEnvelope = TotpEnvelope(
             type = "unlock",
             code = code,
             sessionId = request.sessionId,
             timestamp = nowSeconds,
+            config = config,
         )
 
         val peerPubKey = securePrefs.peerPublicKey ?: return null
@@ -140,11 +187,17 @@ class RequestProtocolImpl(
         val nowSeconds = System.currentTimeMillis() / 1000
         val code = totpEngine.generateCode(seed)
 
+        val config = EnvelopeConfig(
+            requestDataJson = changes?.let { Json.encodeToString(ListSerializer(PolicyChange.serializer()), it) },
+            approved = approved,
+            rejectReason = rejectReason,
+        )
         val totpEnvelope = TotpEnvelope(
             type = "setting",
             code = code,
             sessionId = request.sessionId,
             timestamp = nowSeconds,
+            config = config,
         )
 
         val peerPubKey = securePrefs.peerPublicKey ?: return null
@@ -168,19 +221,52 @@ class RequestProtocolImpl(
             return ResponseResult.Error("此信封已被使用")
         }
 
+        val seed = when (envelope.type) {
+            "unlock" -> seedManager.retrieveSeed(KeyType.UNLOCK)
+            "setting" -> seedManager.retrieveSeed(KeyType.SETTING)
+            else -> null
+        } ?: return ResponseResult.Error("无法获取对应密钥")
+
+        val verifyResult = totpEngine.verifyEnvelope(
+            envelope, seed, envelope.sessionId
+        )
+        if (verifyResult is EnvelopeResult.Invalid) {
+            return ResponseResult.Error("TOTP 验证失败: ${verifyResult.reason}")
+        }
+
         requestGuard.markConsumed(envelope.sessionId + envelope.timestamp)
+
+        val config = envelope.config
+        val approved = config?.approved ?: false
+
+        val payload = when (envelope.type) {
+            "unlock" -> if (approved) {
+                ResponsePayload.UnlockResponse(
+                    targetPackage = config?.targetPackage ?: "",
+                    duration = config?.durationMinutes ?: 0,
+                    durationMode = config?.durationMode ?: "cumulative",
+                )
+            } else {
+                ResponsePayload.Rejected(reason = "请求被拒绝")
+            }
+            "setting" -> if (approved) {
+                val changes = config?.requestDataJson?.let {
+                    Json.decodeFromString(ListSerializer(PolicyChange.serializer()), it)
+                } ?: emptyList()
+                ResponsePayload.ConfigResponse(changes = changes)
+            } else {
+                ResponsePayload.Rejected(reason = config?.rejectReason)
+            }
+            else -> return ResponseResult.Error("未知响应类型: ${envelope.type}")
+        }
 
         val response = ResponseEnvelope(
             type = envelope.type,
             sessionId = envelope.sessionId,
             requestId = "",
             timestamp = envelope.timestamp,
-            approved = true,
-            payload = ResponsePayload.UnlockResponse(
-                targetPackage = "",
-                duration = 30,
-                durationMode = "cumulative",
-            )
+            approved = approved,
+            payload = payload,
         )
 
         return ResponseResult.Success(response)
