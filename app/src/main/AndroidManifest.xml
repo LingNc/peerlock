@@ -30,6 +30,11 @@
             </intent-filter>
         </activity>
 
+        <service
+            android:name=".system.service.PeerLockService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" />
+
         <receiver
             android:name=".system.deviceadmin.PeerLockDeviceAdminReceiver"
             android:exported="true"
@@ -39,6 +44,15 @@
                 android:resource="@xml/device_admin_policies" />
             <intent-filter>
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".system.receiver.BootReceiver"
+            android:exported="true"
+            android:directBootAware="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
 

@@ -2,6 +2,9 @@ package com.peerlock.data.db
 
 import android.content.Context
 import androidx.room.Room
+import com.peerlock.data.db.dao.*
+import com.peerlock.domain.repository.StorageRepository
+import com.peerlock.domain.repository.StorageRepositoryImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -14,8 +17,6 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
-    // SQLCipher 密码——生产环境从 Keystore 派生
-    // 当前使用占位符，第二阶段替换为 KeystoreManager
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): PeerLockDatabase {
@@ -36,4 +37,16 @@ object DatabaseModule {
     @Provides fun provideDailySummaryDao(db: PeerLockDatabase) = db.dailySummaryDao()
     @Provides fun provideRestrictionPolicyDao(db: PeerLockDatabase) = db.restrictionPolicyDao()
     @Provides fun provideAuditLogDao(db: PeerLockDatabase) = db.auditLogDao()
+
+    @Provides
+    @Singleton
+    fun provideStorageRepository(
+        usageRecordDao: UsageRecordDao,
+        hourlySummaryDao: HourlySummaryDao,
+        dailySummaryDao: DailySummaryDao,
+        policyDao: RestrictionPolicyDao,
+        auditLogDao: AuditLogDao,
+    ): StorageRepository = StorageRepositoryImpl(
+        usageRecordDao, hourlySummaryDao, dailySummaryDao, policyDao, auditLogDao
+    )
 }
