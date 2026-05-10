@@ -69,6 +69,15 @@ class SecurePrefs(context: Context) {
         consumedEnvelopes = current
     }
 
+    // L2 紧急解除 nonce
+    var emergencyNonce: String?
+        get() = prefs.getString("emergency_nonce", null)
+        set(value) = prefs.edit().putString("emergency_nonce", value).apply()
+
+    var emergencyNonceExpiry: Long
+        get() = prefs.getLong("emergency_nonce_expiry", 0L)
+        set(value) = prefs.edit().putLong("emergency_nonce_expiry", value).apply()
+
     // 配对材料
     var peerPublicKey: String?
         get() = prefs.getString("peer_public_key", null)
