@@ -13,6 +13,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -23,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.peerlock.ui.common.QrCodeDisplay
+import com.peerlock.ui.common.QrScanLauncher
 
 @Composable
 fun PairingScreen(
@@ -31,6 +33,14 @@ fun PairingScreen(
     viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val scanTrigger by viewModel.scanTrigger.collectAsState()
+
+    QrScanLauncher(
+        onResult = { result ->
+            result?.let { viewModel.onQrScanned(it) }
+        },
+        trigger = scanTrigger,
+    )
 
     Column(
         modifier = Modifier
@@ -55,6 +65,10 @@ fun PairingScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedButton(onClick = { viewModel.requestScan() }) {
+                        Text("扫描响应码")
+                    }
                 } else {
                     Text("请扫描被控端的二维码", style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(16.dp))
@@ -63,6 +77,10 @@ fun PairingScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedButton(onClick = { viewModel.requestScan() }) {
+                        Text("扫描二维码")
+                    }
                 }
             }
             OnboardingStep.SCAN_PEER_QR -> {
@@ -72,6 +90,10 @@ fun PairingScreen(
                     QrCodeDisplay(content = uiState.pairResponseQr)
                 } else {
                     Text("请扫描控制方的响应码", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedButton(onClick = { viewModel.requestScan() }) {
+                        Text("扫描响应码")
+                    }
                 }
             }
             OnboardingStep.COMPLETED -> {

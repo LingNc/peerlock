@@ -42,6 +42,13 @@ class OnboardingViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
 
+    private val _scanTrigger = MutableStateFlow(0)
+    val scanTrigger: StateFlow<Int> = _scanTrigger.asStateFlow()
+
+    fun requestScan() {
+        _scanTrigger.value++
+    }
+
     fun selectRole(role: String) {
         _uiState.value = _uiState.value.copy(role = role, step = OnboardingStep.SHOW_MY_QR)
         if (role == "controlled") {
