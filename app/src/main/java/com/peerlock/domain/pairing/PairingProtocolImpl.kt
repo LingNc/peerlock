@@ -33,6 +33,7 @@ class PairingProtocolImpl(
             id = sessionId,
             pub = encodeBase64(keyPair.publicKey),
             name = deviceName,
+            exp = System.currentTimeMillis() / 1000 + 300L,  // 5 分钟过期
         )
     }
 
@@ -40,6 +41,14 @@ class PairingProtocolImpl(
         request: PairingRequest,
         controllerName: String,
     ): PairingResponse {
+        // 检查过期时间
+        if (request.exp > 0) {
+            val nowSeconds = System.currentTimeMillis() / 1000
+            if (nowSeconds > request.exp) {
+                throw IllegalStateException("配对请求已过期")
+            }
+        }
+
         val peerPublicKey = decodeBase64(request.pub)
 
         val seeds = seedManager.generateSeeds()

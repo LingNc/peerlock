@@ -14,6 +14,7 @@ data class PairingRequest(
     val id: String,              // 配对会话 ID（UUID）
     val pub: String,             // Base64 编码的 ECC 公钥
     val name: String,            // 设备标识（MANUFACTURER + MODEL）
+    val exp: Long = 0L,          // 过期时间（epoch 秒），0 = 不过期
 )
 
 /**
