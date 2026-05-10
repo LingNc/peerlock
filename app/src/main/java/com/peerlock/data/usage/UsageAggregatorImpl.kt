@@ -79,7 +79,8 @@ class UsageAggregatorImpl(
         usageRecordDao.deleteOlderThan(cutoffDate)
         // 审计日志保留 90 天
         val auditCutoff = LocalDate.now().minusDays(90)
-            .format(DateTimeFormatter.ISO_LOCAL_DATE)
+            .atStartOfDay(ZoneId.systemDefault())
+            .toInstant().toEpochMilli()
         auditLogDao.deleteOlderThan(auditCutoff)
     }
 

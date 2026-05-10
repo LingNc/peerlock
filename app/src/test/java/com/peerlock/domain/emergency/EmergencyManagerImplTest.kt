@@ -84,13 +84,7 @@ class EmergencyManagerImplTest {
 
         assertTrue(result)
         verify {
-            securePrefs.peerPublicKey = null
-            securePrefs.myPublicKey = null
-            securePrefs.encryptedSeedSetting = null
-            securePrefs.encryptedSeedUnlock = null
-            securePrefs.encryptedSeedDestroy = null
-            securePrefs.sessionId = null
-            securePrefs.isPaired = false
+            securePrefs.clearPairingData()
         }
         coVerify {
             storageRepository.insertAuditLog(match { it.action == "DESTROY" })

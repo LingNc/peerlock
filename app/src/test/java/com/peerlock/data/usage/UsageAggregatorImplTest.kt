@@ -1,5 +1,6 @@
 package com.peerlock.data.usage
 
+import com.peerlock.data.db.dao.AuditLogDao
 import com.peerlock.data.db.dao.DailySummaryDao
 import com.peerlock.data.db.dao.HourlySummaryDao
 import com.peerlock.data.db.dao.UsageRecordDao
@@ -18,6 +19,7 @@ class UsageAggregatorImplTest {
     private lateinit var usageRecordDao: UsageRecordDao
     private lateinit var hourlySummaryDao: HourlySummaryDao
     private lateinit var dailySummaryDao: DailySummaryDao
+    private lateinit var auditLogDao: AuditLogDao
     private lateinit var securePrefs: SecurePrefs
     private lateinit var aggregator: UsageAggregatorImpl
 
@@ -26,8 +28,9 @@ class UsageAggregatorImplTest {
         usageRecordDao = mockk(relaxed = true)
         hourlySummaryDao = mockk(relaxed = true)
         dailySummaryDao = mockk(relaxed = true)
+        auditLogDao = mockk(relaxed = true)
         securePrefs = mockk(relaxed = true)
-        aggregator = UsageAggregatorImpl(usageRecordDao, hourlySummaryDao, dailySummaryDao, securePrefs)
+        aggregator = UsageAggregatorImpl(usageRecordDao, hourlySummaryDao, dailySummaryDao, auditLogDao, securePrefs)
     }
 
     @Test

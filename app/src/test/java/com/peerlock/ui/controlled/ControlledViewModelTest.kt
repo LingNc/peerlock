@@ -2,6 +2,7 @@ package com.peerlock.ui.controlled
 
 import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.data.seed.SeedManager
+import com.peerlock.data.usage.UsageStatsCollector
 import com.peerlock.domain.policy.PolicyEngine
 import com.peerlock.domain.policy.RestrictionPolicy
 import com.peerlock.domain.repository.StorageRepository
@@ -26,6 +27,7 @@ class ControlledViewModelTest {
     private lateinit var totpEngine: TotpEngine
     private lateinit var seedManager: SeedManager
     private lateinit var policyEngine: PolicyEngine
+    private lateinit var usageStatsCollector: UsageStatsCollector
     private lateinit var viewModel: ControlledViewModel
 
     private val testDispatcher = UnconfinedTestDispatcher()
@@ -45,12 +47,13 @@ class ControlledViewModelTest {
         totpEngine = mockk(relaxed = true)
         seedManager = mockk(relaxed = true)
         policyEngine = mockk(relaxed = true)
+        usageStatsCollector = mockk(relaxed = true)
 
         coEvery { storageRepository.getActivePolicies() } returns listOf(testPolicy)
 
         viewModel = ControlledViewModel(
             storageRepository, requestProtocol, securePrefs,
-            totpEngine, seedManager, policyEngine
+            totpEngine, seedManager, policyEngine, usageStatsCollector
         )
     }
 
