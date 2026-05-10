@@ -27,7 +27,12 @@ object DatabaseModule {
         @ApplicationContext context: Context,
         keystoreManager: KeystoreManager,
     ): PeerLockDatabase {
-        val passphrase = keystoreManager.generateDbPassphrase()
+        val passphrase = try {
+            keystoreManager.generateDbPassphrase()
+        } catch (e: Exception) {
+            android.util.Log.w("DatabaseModule", "Keystore 不可用，使用备用密码", e)
+            "peerlock_fallback_${context.packageName}".toByteArray()
+        }
         val factory = SupportFactory(passphrase)
 
         return Room.databaseBuilder(
@@ -63,8 +68,9 @@ object DatabaseModule {
         usageRecordDao: UsageRecordDao,
         hourlySummaryDao: HourlySummaryDao,
         dailySummaryDao: DailySummaryDao,
+        auditLogDao: AuditLogDao,
         securePrefs: SecurePrefs,
     ): UsageAggregator = UsageAggregatorImpl(
-        usageRecordDao, hourlySummaryDao, dailySummaryDao, securePrefs
+        usageRecordDao, hourlySummaryDao, dailySummaryDao, auditLogDao, securePrefs
     )
 }
