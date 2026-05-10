@@ -12,6 +12,87 @@
 
 ---
 
+## 进度追踪
+
+- [x] Task 1.1: 修复 DB 密码硬编码 (fd8af94)
+- [x] Task 1.2: L2 紧急解除移除 Device Owner (aa1226f)
+- [x] Task 1.3: 配对 QR 添加过期时间 (acdf4ef)
+- [ ] Task 0.0: 重写提交信息（移除 Co-Authored-By 署名）
+- [ ] Task 1.4: 设备名使用真实型号
+- [ ] Task 3.1: 修复 processRequest() 存根
+- [ ] Task 3.2: 修复 processResponse() 存根
+- [ ] Task 2.1: 巡检写入原始使用记录
+- [ ] Task 2.2: 触发聚合和每日重置
+- [ ] Task 2.3: AlarmManager 心跳集成
+- [ ] Task 4.1: 集成 zxing QR 扫描组件
+- [ ] Task 5.4: 通知增强
+- [ ] Task 5.5: otpauth URI 导出
+- [ ] Task 5.3: 控制端审批界面
+- [ ] Task 5.1: 紧急逃生 UI
+- [ ] Task 5.2: Device Owner 设置引导 UI
+
+---
+
+## Task 0.0: 重写提交信息（移除 Co-Authored-By 署名）
+
+**问题：** 11 个提交（Phase 7 共 7 个 + gap-filling 已完成 4 个）的 commit message 包含多余的 "Generated with Claude Code / via Happy / Co-Authored-By" 署名行，不符合 git 提交规范。
+
+**涉及提交（按时间顺序）：**
+1. `f9cab74` — docs: 添加第七阶段实施计划（UI）
+2. `61515c5` — feat: Material3 主题（动态配色 + 蓝色主色调）
+3. `3dddd66` — feat: Compose 导航（路由定义 + 起始路由逻辑 + 占位 Screen）
+4. `ae715a1` — feat: 共享 UI 组件（TOTP 输入、二维码、状态卡片）
+5. `bc1cd1c` — feat: 引导流程（角色选择 + 配对 QR 流程 + OnboardingViewModel）
+6. `5b97d85` — feat: 控制端主界面（TOTP 码展示 + 策略列表）
+7. `c5afc5c` — feat: 被控端主界面（受限应用 + 解锁申请 + ControlledViewModel）
+8. `ef6a848` — docs: 添加差距补齐实施计划（15 个缺口）
+9. `fd8af94` — fix: 使用 KeystoreManager 生成数据库密码，移除硬编码密钥
+10. `aa1226f` — fix: L2 紧急解除时移除 Device Owner 权限
+11. `acdf4ef` — fix: 配对请求添加 5 分钟过期时间限制
+
+**方案：** 使用 `git rebase` + 自定义 editor 脚本自动剥离署名行。
+
+- [ ] **步骤 1：创建临时 editor 脚本**
+
+```bash
+cat > /tmp/strip-coauthor.sh << 'SCRIPT'
+#!/bin/bash
+sed -i '/^$/N;/^\n$/d' "$1"
+sed -i '/^Generated with \[Claude Code\]/d' "$1"
+sed -i '/^via \[Happy\]/d' "$1"
+sed -i '/^Co-Authored-By:/d' "$1"
+sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$1"
+SCRIPT
+chmod +x /tmp/strip-coauthor.sh
+```
+
+- [ ] **步骤 2：执行 rebase**
+
+```bash
+GIT_SEQUENCE_EDITOR="sed -i 's/^pick/reword/g'" \
+GIT_EDITOR="/tmp/strip-coauthor.sh" \
+git rebase -i f9cab74^
+```
+
+这会将 f9cab74 及之后的所有提交标记为 `reword`，然后用脚本自动清理 message。
+
+- [ ] **步骤 3：验证**
+
+```bash
+git log --oneline -15
+# 确认所有提交只有第一行，无署名
+git log --format="%B" -1 | cat
+# 确认最新提交的 message 干净
+```
+
+- [ ] **步骤 4：清理临时文件**
+
+```bash
+rm /tmp/strip-coauthor.sh
+```
+
+---
+
 ## Layer 1: 安全修复（无依赖）
 
 ### Task 1.1: 修复 DB 密码硬编码
