@@ -3,6 +3,7 @@ package com.peerlock.data.db
 import android.content.Context
 import androidx.room.Room
 import com.peerlock.data.db.dao.*
+import com.peerlock.data.keystore.KeystoreManager
 import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.data.usage.UsageAggregator
 import com.peerlock.data.usage.UsageAggregatorImpl
@@ -22,8 +23,11 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext context: Context): PeerLockDatabase {
-        val passphrase = "peerlock_dev_passphrase".toByteArray()
+    fun provideDatabase(
+        @ApplicationContext context: Context,
+        keystoreManager: KeystoreManager,
+    ): PeerLockDatabase {
+        val passphrase = keystoreManager.generateDbPassphrase()
         val factory = SupportFactory(passphrase)
 
         return Room.databaseBuilder(
