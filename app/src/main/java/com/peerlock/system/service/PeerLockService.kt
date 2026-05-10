@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
+import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.data.usage.UsageAggregator
 import com.peerlock.data.usage.UsageStatsCollector
 import com.peerlock.domain.policy.PolicyEngine
@@ -41,6 +42,7 @@ class PeerLockService : Service() {
     @Inject lateinit var timeSyncManager: TimeSyncManager
     @Inject lateinit var safeModeManager: SafeModeManager
     @Inject lateinit var usageAggregator: UsageAggregator
+    @Inject lateinit var securePrefs: SecurePrefs
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var patrolJob: Job? = null
@@ -62,7 +64,7 @@ class PeerLockService : Service() {
         if (!::patrolLogic.isInitialized) {
             patrolLogic = PatrolLogic(
                 policyEngine, usageCollector, storageRepository, deviceOwnerManager,
-                timeSyncManager, safeModeManager, usageAggregator
+                timeSyncManager, safeModeManager, usageAggregator, securePrefs
             )
         }
 

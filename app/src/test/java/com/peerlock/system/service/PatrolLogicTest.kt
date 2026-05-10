@@ -1,5 +1,6 @@
 package com.peerlock.system.service
 
+import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.data.usage.UsageAggregator
 import com.peerlock.data.usage.UsageStatsCollector
 import com.peerlock.domain.policy.PolicyAction
@@ -25,6 +26,7 @@ class PatrolLogicTest {
     private lateinit var timeSyncManager: TimeSyncManager
     private lateinit var safeModeManager: SafeModeManager
     private lateinit var usageAggregator: UsageAggregator
+    private lateinit var securePrefs: SecurePrefs
     private lateinit var patrolLogic: PatrolLogic
 
     private val testPolicy = RestrictionPolicy(
@@ -42,9 +44,10 @@ class PatrolLogicTest {
         timeSyncManager = mockk(relaxed = true)
         safeModeManager = mockk(relaxed = true)
         usageAggregator = mockk(relaxed = true)
+        securePrefs = mockk(relaxed = true)
         patrolLogic = PatrolLogic(
             policyEngine, usageCollector, storageRepo, deviceOwnerManager,
-            timeSyncManager, safeModeManager, usageAggregator
+            timeSyncManager, safeModeManager, usageAggregator, securePrefs
         )
 
         // 默认：时间可靠，非安全模式

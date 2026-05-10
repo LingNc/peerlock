@@ -1,5 +1,6 @@
 package com.peerlock.system.service
 
+import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.data.usage.AppUsageInfo
 import com.peerlock.data.usage.UsageAggregator
 import com.peerlock.data.usage.UsageStatsCollector
@@ -25,9 +26,11 @@ class PatrolLogic(
     private val timeSyncManager: TimeSyncManager,
     private val safeModeManager: SafeModeManager,
     private val usageAggregator: UsageAggregator,
+    private val securePrefs: SecurePrefs,
 ) {
     suspend fun executePatrol() {
         collectUsageRecords()
+        scheduleAggregation()
 
         val now = System.currentTimeMillis()
 
@@ -96,6 +99,30 @@ class PatrolLogic(
                     date = date,
                 )
             )
+        }
+    }
+
+    private suspend fun scheduleAggregation() {
+        val now = System.currentTimeMillis()
+        val zone = ZoneId.systemDefault()
+        val localNow = Instant.ofEpochMilli(now).atZone(zone)
+        val currentDate = localNow.toLocalDate().toString()
+        val currentHour = localNow.hour
+
+        val lastHour = if (currentHour == 0) 23 else currentHour - 1
+        val lastDate = if (currentHour == 0) {
+            localNow.toLocalDate().minusDays(1).toString()
+        } else {
+            currentDate
+        }
+        usageAggregator.aggregateHourly(lastDate, lastHour)
+
+        val lastDailyRun = securePrefs.lastDailyAggregationDate
+        if (lastDailyRun != currentDate) {
+            usageAggregator.aggregateDaily(lastDate)
+            usageAggregator.cleanupOldRecords()
+            policyEngine.resetDailyUsage()
+            securePrefs.lastDailyAggregationDate = currentDate
         }
     }
 }

@@ -108,6 +108,10 @@ class SecurePrefs(context: Context) {
         get() = prefs.getString("safe_mode_reason", null)
         set(value) = prefs.edit().putString("safe_mode_reason", value).apply()
 
+    var lastDailyAggregationDate: String
+        get() = prefs.getString("last_daily_agg_date", "") ?: ""
+        set(value) = prefs.edit().putString("last_daily_agg_date", value).apply()
+
     fun clear() {
         prefs.edit().clear().apply()
     }
