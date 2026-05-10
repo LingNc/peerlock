@@ -3,10 +3,14 @@ package com.peerlock.ui.controlled
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.peerlock.data.prefs.SecurePrefs
+import com.peerlock.data.seed.SeedManager
+import com.peerlock.domain.policy.PolicyEngine
 import com.peerlock.domain.policy.RestrictionPolicy
 import com.peerlock.domain.repository.StorageRepository
 import com.peerlock.domain.request.DeviceInfo
 import com.peerlock.domain.request.RequestProtocol
+import com.peerlock.domain.totp.KeyType
+import com.peerlock.domain.totp.TotpEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +23,7 @@ data class ControlledUiState(
     val todayScreenTimeMs: Long = 0L,
     val isLoading: Boolean = true,
     val requestQrCode: String? = null,
+    val quickCodeResult: String? = null,
     val error: String? = null,
 )
 
@@ -27,6 +32,9 @@ class ControlledViewModel @Inject constructor(
     private val storageRepository: StorageRepository,
     private val requestProtocol: RequestProtocol,
     private val securePrefs: SecurePrefs,
+    private val totpEngine: TotpEngine,
+    private val seedManager: SeedManager,
+    private val policyEngine: PolicyEngine,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ControlledUiState())
@@ -66,6 +74,30 @@ class ControlledViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(error = "生成请求失败（频率限制或密钥缺失）")
             }
         }
+    }
+
+    fun verifyQuickCode(code: String, targetPackage: String, durationMinutes: Int) {
+        viewModelScope.launch {
+            val seed = seedManager.retrieveSeed(KeyType.UNLOCK)
+            if (seed == null) {
+                _uiState.value = _uiState.value.copy(error = "密钥缺失")
+                return@launch
+            }
+            val valid = totpEngine.verifyCode(seed, code, tolerance = 1)
+            if (valid) {
+                policyEngine.recordUnlock(targetPackage, durationMinutes)
+                policyEngine.unsuspendApp(targetPackage)
+                _uiState.value = _uiState.value.copy(
+                    quickCodeResult = "已解锁 $targetPackage，${durationMinutes} 分钟后自动暂停",
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(error = "验证码错误")
+            }
+        }
+    }
+
+    fun clearQuickCodeResult() {
+        _uiState.value = _uiState.value.copy(quickCodeResult = null)
     }
 
     fun clearError() {

@@ -13,6 +13,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -28,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.peerlock.ui.common.QrCodeDisplay
+import com.peerlock.ui.common.TotpInputField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +40,7 @@ fun UnlockRequestScreen(
     val uiState by viewModel.uiState.collectAsState()
     var selectedPackage by remember { mutableStateOf("") }
     var durationMinutes by remember { mutableStateOf("30") }
+    var useQuickCode by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -74,19 +77,54 @@ fun UnlockRequestScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Button(
-                onClick = {
-                    viewModel.generateUnlockRequest(selectedPackage, durationMinutes.toIntOrNull() ?: 30)
-                },
-                enabled = selectedPackage.isNotEmpty(),
+            // 模式切换
+            OutlinedButton(
+                onClick = { useQuickCode = !useQuickCode },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("生成申请码")
+                Text(if (useQuickCode) "切换到扫码模式" else "切换到快速码模式")
             }
 
-            uiState.requestQrCode?.let { qr ->
-                Text("请让控制方扫描此二维码", style = MaterialTheme.typography.titleMedium)
-                QrCodeDisplay(content = qr, modifier = Modifier.align(Alignment.CenterHorizontally))
+            if (useQuickCode) {
+                // 快速码模式：输入 6 位 TOTP 码
+                Text("请输入控制方提供的 6 位解锁码", style = MaterialTheme.typography.bodyMedium)
+                TotpInputField(
+                    onCodeComplete = { code ->
+                        viewModel.verifyQuickCode(
+                            code,
+                            selectedPackage,
+                            durationMinutes.toIntOrNull() ?: 30,
+                        )
+                    },
+                )
+                uiState.quickCodeResult?.let { result ->
+                    Text(text = result, color = MaterialTheme.colorScheme.primary)
+                    Button(
+                        onClick = {
+                            viewModel.clearQuickCodeResult()
+                            onBack()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("完成")
+                    }
+                }
+            } else {
+                // 扫码模式：生成请求二维码
+                Button(
+                    onClick = {
+                        viewModel.generateUnlockRequest(selectedPackage, durationMinutes.toIntOrNull() ?: 30)
+                    },
+                    enabled = selectedPackage.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("生成申请码")
+                }
+
+                uiState.requestQrCode?.let { qr ->
+                    Text("请让控制方扫描此二维码", style = MaterialTheme.typography.titleMedium)
+                    QrCodeDisplay(content = qr, modifier = Modifier.align(Alignment.CenterHorizontally))
+                }
             }
 
             uiState.error?.let { error ->
