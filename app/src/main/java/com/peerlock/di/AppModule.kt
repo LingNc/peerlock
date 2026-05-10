@@ -76,5 +76,11 @@ object AppModule {
         storageRepository: StorageRepository,
         usageStatsCollector: UsageStatsCollector,
         deviceOwnerManager: DeviceOwnerManager,
-    ): PolicyEngine = PolicyEngineImpl(storageRepository, usageStatsCollector, deviceOwnerManager)
+        seedManager: SeedManager,
+        totpEngine: TotpEngine,
+        securePrefs: SecurePrefs,
+    ): PolicyEngine = PolicyEngineImpl(
+        storageRepository, usageStatsCollector, deviceOwnerManager,
+        seedManager, totpEngine, securePrefs
+    )
 }

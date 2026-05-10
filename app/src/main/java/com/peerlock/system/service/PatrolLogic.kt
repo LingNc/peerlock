@@ -28,6 +28,9 @@ class PatrolLogic(
                 is PolicyAction.Unsuspend -> {
                     policyEngine.unsuspendApp(policy.targetPackage)
                 }
+                is PolicyAction.Unlock -> {
+                    // 解锁由 verifyUnlockCode 处理
+                }
                 is PolicyAction.Monitor -> {
                     // 正常状态，无需操作
                 }
