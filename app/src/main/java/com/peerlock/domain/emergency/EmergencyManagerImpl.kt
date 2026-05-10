@@ -69,12 +69,13 @@ class EmergencyManagerImpl(
         securePrefs.emergencyNonceExpiry = 0L
 
         clearCryptoMaterial()
+        deviceOwnerManager.removeDeviceOwner()
         storageRepository.insertAuditLog(
             AuditLog(
                 timestamp = System.currentTimeMillis(),
                 action = "EMERGENCY_L2",
                 targetPackage = null,
-                detail = "L2 高级解除执行：清除加密材料，标记移除 DO"
+                detail = "L2 高级解除执行：清除加密材料，移除 Device Owner"
             )
         )
         return true

@@ -3,6 +3,7 @@ package com.peerlock.system.deviceadmin
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
+import android.util.Log
 
 class DeviceOwnerManagerImpl(
     private val context: Context,
@@ -22,4 +23,18 @@ class DeviceOwnerManagerImpl(
     }
 
     override fun getAdminComponentName(): ComponentName = adminComponent
+
+    override fun removeDeviceOwner(): Boolean {
+        return try {
+            dpm.clearDeviceOwnerApp(context.packageName)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "移除 DO 失败", e)
+            false
+        }
+    }
+
+    companion object {
+        private const val TAG = "DeviceOwnerManager"
+    }
 }

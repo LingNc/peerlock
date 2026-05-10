@@ -127,6 +127,7 @@ class EmergencyManagerImplTest {
             securePrefs.emergencyNonce = null
             securePrefs.emergencyNonceExpiry = 0L
         }
+        verify { deviceOwnerManager.removeDeviceOwner() }
         coVerify {
             storageRepository.insertAuditLog(match { it.action == "EMERGENCY_L2" })
         }

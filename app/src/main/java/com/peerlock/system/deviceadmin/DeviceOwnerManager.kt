@@ -16,4 +16,7 @@ interface DeviceOwnerManager {
 
     /** 获取管理员组件名（用于 DPM 调用） */
     fun getAdminComponentName(): android.content.ComponentName
+
+    /** 移除当前应用的 Device Owner 身份 */
+    fun removeDeviceOwner(): Boolean
 }

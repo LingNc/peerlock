@@ -13,5 +13,6 @@ class DeviceOwnerManagerImplTest {
         assertTrue(interfaceClass.methods.any { it.name == "isAdminActive" })
         assertTrue(interfaceClass.methods.any { it.name == "setPackagesSuspended" })
         assertTrue(interfaceClass.methods.any { it.name == "getAdminComponentName" })
+        assertTrue(interfaceClass.methods.any { it.name == "removeDeviceOwner" })
     }
 }
