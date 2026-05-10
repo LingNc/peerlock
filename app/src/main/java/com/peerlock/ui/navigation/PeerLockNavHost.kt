@@ -51,8 +51,15 @@ fun PeerLockNavHost(
         composable(Routes.ROLE_SELECTION) {
             RoleSelectionScreen(
                 onRoleSelected = { role ->
-                    navController.navigate(Routes.pairing(role)) {
-                        popUpTo(Routes.ROLE_SELECTION) { inclusive = true }
+                    if (role == "controller") {
+                        navController.navigate(Routes.pairing("controller")) {
+                            popUpTo(Routes.ROLE_SELECTION) { inclusive = true }
+                        }
+                    } else {
+                        // 被控端先走 DO + 电池优化检查
+                        navController.navigate(Routes.DEVICE_OWNER_SETUP) {
+                            popUpTo(Routes.ROLE_SELECTION) { inclusive = true }
+                        }
                     }
                 }
             )
@@ -66,16 +73,10 @@ fun PeerLockNavHost(
             PairingScreen(
                 role = role,
                 onPairingComplete = {
-                    if (role == "controller") {
-                        // 控制端不需要 DO 设置，直接进入主页
-                        navController.navigate(Routes.CONTROLLER_HOME) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                    } else {
-                        // 被控端需要 DO 设置 + 电池优化
-                        navController.navigate(Routes.DEVICE_OWNER_SETUP) {
-                            popUpTo(0) { inclusive = true }
-                        }
+                    val destination = if (role == "controller") Routes.CONTROLLER_HOME
+                    else Routes.CONTROLLED_HOME
+                    navController.navigate(destination) {
+                        popUpTo(0) { inclusive = true }
                     }
                 }
             )
@@ -120,17 +121,27 @@ fun PeerLockNavHost(
         composable(Routes.DEVICE_OWNER_SETUP) {
             DeviceOwnerSetupScreen(
                 onContinue = {
-                    val destination = if (securePrefs.role == "controller") Routes.CONTROLLER_HOME
-                    else Routes.CONTROLLED_HOME
-                    navController.navigate(destination) {
-                        popUpTo(0) { inclusive = true }
+                    if (securePrefs.isPaired) {
+                        // 已配对（从设置进入），回主页
+                        val destination = if (securePrefs.role == "controller") Routes.CONTROLLER_HOME
+                        else Routes.CONTROLLED_HOME
+                        navController.navigate(destination) { popUpTo(0) { inclusive = true } }
+                    } else {
+                        // 未配对（角色选择后），进配对
+                        navController.navigate(Routes.PAIRING.replace("{role}", "controlled")) {
+                            popUpTo(0) { inclusive = true }
+                        }
                     }
                 },
                 onSkip = {
-                    val destination = if (securePrefs.role == "controller") Routes.CONTROLLER_HOME
-                    else Routes.CONTROLLED_HOME
-                    navController.navigate(destination) {
-                        popUpTo(0) { inclusive = true }
+                    if (securePrefs.isPaired) {
+                        val destination = if (securePrefs.role == "controller") Routes.CONTROLLER_HOME
+                        else Routes.CONTROLLED_HOME
+                        navController.navigate(destination) { popUpTo(0) { inclusive = true } }
+                    } else {
+                        navController.navigate(Routes.PAIRING.replace("{role}", "controlled")) {
+                            popUpTo(0) { inclusive = true }
+                        }
                     }
                 },
             )
