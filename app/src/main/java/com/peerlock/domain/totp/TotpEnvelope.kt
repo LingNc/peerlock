@@ -1,5 +1,8 @@
 package com.peerlock.domain.totp
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class TotpEnvelope(
     val v: Int = 1,
     val type: String,
@@ -9,6 +12,7 @@ data class TotpEnvelope(
     val config: EnvelopeConfig? = null,
 )
 
+@Serializable
 data class EnvelopeConfig(
     val durationMinutes: Int? = null,
     val durationMode: String? = null,      // "cumulative" | "absolute"
