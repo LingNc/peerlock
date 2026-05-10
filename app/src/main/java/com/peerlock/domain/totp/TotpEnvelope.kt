@@ -19,6 +19,7 @@ data class EnvelopeConfig(
     val absoluteEndTime: Long? = null,
     val targetPackage: String? = null,
     val requestDataJson: String? = null,   // 序列化的请求/响应数据
+    val deviceInfoJson: String? = null,    // 序列化的 DeviceInfo
     val approved: Boolean? = null,
     val rejectReason: String? = null,
 )

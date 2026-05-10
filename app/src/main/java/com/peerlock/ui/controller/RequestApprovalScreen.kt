@@ -28,7 +28,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.peerlock.domain.request.RequestPayload
 import com.peerlock.ui.common.QrCodeDisplay
 import com.peerlock.ui.common.QrScanLauncher
 
@@ -134,8 +133,26 @@ private fun RequestDetailCard(request: com.peerlock.domain.request.RequestEnvelo
             Text(text = "请求详情", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = "类型: ${request.type}", style = MaterialTheme.typography.bodyMedium)
+
+            // 设备状态信息
+            val info = request.deviceInfo
+            if (info.todayScreenTimeMs > 0 || info.suspendedApps.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = "设备状态", style = MaterialTheme.typography.titleSmall)
+                if (info.todayScreenTimeMs > 0) {
+                    val minutes = info.todayScreenTimeMs / 60_000
+                    Text(text = "今日屏幕时间: ${minutes} 分钟", style = MaterialTheme.typography.bodySmall)
+                }
+                if (info.suspendedApps.isNotEmpty()) {
+                    Text(text = "已暂停应用: ${info.suspendedApps.size} 个", style = MaterialTheme.typography.bodySmall)
+                }
+                if (info.isInSafeMode) {
+                    Text(text = "⚠ 安全模式已激活", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+
             when (val payload = request.payload) {
-                is RequestPayload.UnlockRequest -> {
+                is com.peerlock.domain.request.RequestPayload.UnlockRequest -> {
                     Text(text = "应用: ${payload.targetPackage}", style = MaterialTheme.typography.bodyMedium)
                     Text(text = "请求时长: ${payload.requestedDuration} 分钟", style = MaterialTheme.typography.bodyMedium)
                     Text(text = "时长模式: ${payload.durationMode}", style = MaterialTheme.typography.bodyMedium)
@@ -143,7 +160,7 @@ private fun RequestDetailCard(request: com.peerlock.domain.request.RequestEnvelo
                         Text(text = "理由: $it", style = MaterialTheme.typography.bodySmall)
                     }
                 }
-                is RequestPayload.ConfigRequest -> {
+                is com.peerlock.domain.request.RequestPayload.ConfigRequest -> {
                     Text(text = "策略变更: ${payload.changes.size} 项", style = MaterialTheme.typography.bodyMedium)
                     payload.changes.forEach { change ->
                         Text(

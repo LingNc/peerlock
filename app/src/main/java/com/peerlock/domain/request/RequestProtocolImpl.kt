@@ -44,6 +44,7 @@ class RequestProtocolImpl(
             durationMinutes = requestedDuration,
             durationMode = durationMode,
             targetPackage = targetPackage,
+            deviceInfoJson = Json.encodeToString(DeviceInfo.serializer(), deviceInfo),
         )
         val totpEnvelope = TotpEnvelope(
             type = "unlock",
@@ -74,6 +75,7 @@ class RequestProtocolImpl(
 
         val config = EnvelopeConfig(
             requestDataJson = Json.encodeToString(ListSerializer(PolicyChange.serializer()), changes),
+            deviceInfoJson = Json.encodeToString(DeviceInfo.serializer(), deviceInfo),
         )
         val totpEnvelope = TotpEnvelope(
             type = "setting",
@@ -115,6 +117,13 @@ class RequestProtocolImpl(
         }
 
         val config = envelope.config
+        val deviceInfo = config?.deviceInfoJson?.let {
+            try { Json.decodeFromString(DeviceInfo.serializer(), it) } catch (_: Exception) { null }
+        } ?: DeviceInfo(
+            todayScreenTimeMs = 0,
+            suspendedApps = emptyList(),
+            isInSafeMode = false,
+        )
         val payload = when (envelope.type) {
             "unlock" -> RequestPayload.UnlockRequest(
                 targetPackage = config?.targetPackage ?: "",
@@ -135,11 +144,7 @@ class RequestProtocolImpl(
             sessionId = envelope.sessionId,
             requestId = UUID.randomUUID().toString(),
             timestamp = envelope.timestamp,
-            deviceInfo = DeviceInfo(
-                todayScreenTimeMs = 0,
-                suspendedApps = emptyList(),
-                isInSafeMode = false,
-            ),
+            deviceInfo = deviceInfo,
             payload = payload,
         )
 
