@@ -64,8 +64,16 @@ fun PeerLockNavHost(
             PairingScreen(
                 role = role,
                 onPairingComplete = {
-                    navController.navigate(Routes.DEVICE_OWNER_SETUP) {
-                        popUpTo(0) { inclusive = true }
+                    if (role == "controller") {
+                        // 控制端不需要 DO 设置，直接进入主页
+                        navController.navigate(Routes.CONTROLLER_HOME) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    } else {
+                        // 被控端需要 DO 设置 + 电池优化
+                        navController.navigate(Routes.DEVICE_OWNER_SETUP) {
+                            popUpTo(0) { inclusive = true }
+                        }
                     }
                 }
             )

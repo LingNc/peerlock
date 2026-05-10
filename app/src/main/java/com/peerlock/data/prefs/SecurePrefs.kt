@@ -112,6 +112,32 @@ class SecurePrefs(context: Context) {
         get() = prefs.getString("last_daily_agg_date", "") ?: ""
         set(value) = prefs.edit().putString("last_daily_agg_date", value).apply()
 
+    // 电池优化白名单状态
+    var batteryOptimizationDone: Boolean
+        get() = prefs.getBoolean("battery_opt_done", false)
+        set(value) = prefs.edit().putBoolean("battery_opt_done", value).apply()
+
+    /** 选择性清除配对和加密材料，保留 DO 状态、使用数据配置、聚合状态等 */
+    fun clearPairingData() {
+        prefs.edit()
+            .remove("session_id")
+            .remove("role")
+            .remove("is_paired")
+            .remove("peer_public_key")
+            .remove("my_public_key")
+            .remove("enc_seed_setting")
+            .remove("enc_seed_unlock")
+            .remove("enc_seed_destroy")
+            .remove("consumed_envelopes")
+            .remove("totp_error_count")
+            .remove("totp_locked_until")
+            .remove("safe_mode_active")
+            .remove("safe_mode_reason")
+            .remove("emergency_nonce")
+            .remove("emergency_nonce_expiry")
+            .apply()
+    }
+
     fun clear() {
         prefs.edit().clear().apply()
     }
