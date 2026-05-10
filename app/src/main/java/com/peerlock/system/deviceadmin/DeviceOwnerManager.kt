@@ -19,4 +19,7 @@ interface DeviceOwnerManager {
 
     /** 移除当前应用的 Device Owner 身份 */
     fun removeDeviceOwner(): Boolean
+
+    /** 阻止/允许卸载当前应用 */
+    fun setUninstallBlocked(blocked: Boolean)
 }

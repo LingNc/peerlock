@@ -34,6 +34,10 @@ class DeviceOwnerManagerImpl(
         }
     }
 
+    override fun setUninstallBlocked(blocked: Boolean) {
+        dpm.setUninstallBlocked(adminComponent, context.packageName, blocked)
+    }
+
     companion object {
         private const val TAG = "DeviceOwnerManager"
     }
