@@ -90,6 +90,15 @@ class SecurePrefs(context: Context) {
         get() = prefs.getString("my_public_key", null)
         set(value) = prefs.edit().putString("my_public_key", value).apply()
 
+    // 安全模式状态
+    var safeModeActive: Boolean
+        get() = prefs.getBoolean("safe_mode_active", false)
+        set(value) = prefs.edit().putBoolean("safe_mode_active", value).apply()
+
+    var safeModeReason: String?
+        get() = prefs.getString("safe_mode_reason", null)
+        set(value) = prefs.edit().putString("safe_mode_reason", value).apply()
+
     fun clear() {
         prefs.edit().clear().apply()
     }
