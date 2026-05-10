@@ -8,6 +8,10 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.IBinder
 import android.os.SystemClock
 import android.util.Log
@@ -17,6 +21,7 @@ import com.peerlock.data.usage.UsageStatsCollector
 import com.peerlock.domain.policy.PolicyEngine
 import com.peerlock.domain.repository.StorageRepository
 import com.peerlock.domain.security.SafeModeManager
+import com.peerlock.domain.security.SyncResult
 import com.peerlock.domain.security.TimeSyncManager
 import com.peerlock.system.deviceadmin.DeviceOwnerManager
 import dagger.hilt.android.AndroidEntryPoint
@@ -48,11 +53,43 @@ class PeerLockService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private lateinit var patrolLogic: PatrolLogic
 
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            if (safeModeManager.isInSafeMode()) {
+                Log.i(TAG, "网络恢复，尝试 NTP 校验退出安全模式")
+                serviceScope.launch {
+                    try {
+                        val result = timeSyncManager.syncWithNtp()
+                        if (result is SyncResult.Success) {
+                            safeModeManager.exitSafeMode()
+                            Log.i(TAG, "NTP 校验成功，已退出安全模式")
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "网络恢复后 NTP 校验失败", e)
+                    }
+                }
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification())
+        registerNetworkCallback()
         Log.i(TAG, "前台服务已创建")
+    }
+
+    private fun registerNetworkCallback() {
+        try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val request = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            cm.registerNetworkCallback(request, networkCallback)
+        } catch (e: Exception) {
+            Log.w(TAG, "注册网络回调失败", e)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -85,6 +122,10 @@ class PeerLockService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            cm.unregisterNetworkCallback(networkCallback)
+        } catch (_: Exception) {}
         cancelAlarm()
         serviceScope.cancel()
         Log.i(TAG, "前台服务已停止")
