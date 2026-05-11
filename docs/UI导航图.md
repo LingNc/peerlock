@@ -2,9 +2,9 @@
 flowchart TD
     %% ==================== App 启动判断 ====================
     APP["App 启动"] --> CHECK{安全检查}
-    CHECK -->|未配对| RS
-    CHECK -->|已配对+管控端| DEV_SEL
-    CHECK -->|已配对+被控端| CDH
+    CHECK -->|仅管控端配对| DEV_SEL
+    CHECK -->|仅被控端配对| CDH
+    CHECK -->|未配对 或 双端都配对过| RS
 
     %% ==================== 角色选择页 ====================
     RS["角色选择页<br/>TopAppBar: PeerLock + 设置图标 (无返回)<br/>PeerLock headlineLarge<br/>两人互相监督的屏幕时间管理工具<br/>[我要管控对方] Button<br/>[我需要被管控] OutlinedButton"]
@@ -57,7 +57,7 @@ flowchart TD
     DEV_SEL["设备选择页<br/>TopAppBar: PeerLock 管控端 + 设置图标<br/>已配对设备列表:<br/>  · Galaxy S24 ACTIVE 身份指纹<br/>  · Pixel 7 WAITING 身份指纹<br/>[添加新设备] Button<br/>[设置] IconButton<br/>长按设备卡片: 重新展示回执QR/查看信息"]
 
     %% ==================== 管控端主页 ====================
-    CH["管控端主页<br/>TopAppBar: 返回箭头 + 设备名 + 设置图标<br/>返回: 设备选择页<br/>StatusCard: 已配对 设备名 策略巡检运行中<br/>验证码每秒刷新: 管理码 解锁码<br/>策略列表: com.app1 com.app2<br/>[审批请求] Button<br/>[使用统计] OutlinedButton<br/>[单向控制] OutlinedButton<br/>底部红色: [显示终止码] 需点击进入新页面"]
+    CH["管控端主页<br/>TopAppBar: 返回箭头 + 设备名 + 设置图标<br/>返回: 设备选择页<br/>StatusCard: 已配对 设备名 策略巡检运行中<br/>验证码每秒刷新: 管理码 解锁码<br/>策略列表: com.app1 com.app2<br/>[审批请求] Button<br/>[使用统计] OutlinedButton<br/>[解锁应用] OutlinedButton<br/>[调整策略] OutlinedButton"]
 
     %% ==================== 管控端终止码页 ====================
     subgraph CTRL_DESTROY ["终止码页 (管控端)"]
@@ -72,27 +72,28 @@ flowchart TD
         RA_RESP["SHOWING_RESPONSE:<br/>请让被控端扫描此响应码<br/>QR码 + [复制响应数据]<br/>[完成]"]
     end
 
-    %% ==================== 单向控制页 ====================
-    subgraph SINGLE_CONTROL ["单向控制页 (管控端)"]
-        SC_TAB["三个Tab切换: 解锁 | 调整 | 统计"]
-        SC_UNLOCK["解锁Tab:<br/>选择受限应用 FilterChip<br/>解锁时长 5分钟(默认 可配置)<br/>[生成解锁指令] QR/字符串<br/>被控端收到后自动执行"]
-        SC_ADJUST["调整Tab:<br/>选择目标应用 或 选择全部策略<br/>新时长/时段/策略配置<br/>可批量修改多项策略打包为一个指令<br/>[生成调整指令] QR/字符串<br/>被控端收到后需确认执行"]
-        SC_STATS["统计Tab:<br/>选择时间范围: 1天/7天/30天/全部<br/>[生成请求指令]<br/>被控端自动发送统计数据"]
+    %% ==================== 管控端解锁应用页 ====================
+    subgraph UNLOCK_APP ["解锁应用页 (管控端)"]
+        UA_SELECT["选择受限应用 FilterChip (多选必选)<br/>解锁时长 5分钟(默认 可配置)<br/>[生成解锁指令] QR/字符串<br/>被控端收到后自动执行"]
     end
 
-    %% ==================== 紧急逃生页 (被控端L2入口已移至主页) ====================
-    subgraph EMERGENCY ["L2 高级解除 - 在被控端主页申请解除中展开"]
-        EM_L2["L2 高级解除 (连点7次展开):<br/>需ADB命令 移除DO和密钥<br/>[开始验证] Button<br/>挑战码红色 [挑战码] 输入框<br/>[验证] Button<br/>通过: ADB命令 monospace<br/>执行后: L2 解除已执行"]
+    %% ==================== 管控端调整策略页 ====================
+    subgraph CTRL_POLICY ["调整策略页 (管控端)"]
+        CFP_TAB["两个Tab: 应用策略 | 配置参数<br/>两种模式: 管理码 | 申请"]
+        CFP_APP["应用策略Tab:<br/>选择目标应用 FilterChip (多选)<br/>或 [选择全部策略]<br/>调整时长/时段参数"]
+        CFP_CONFIG["配置参数Tab:<br/>默认解锁时长/申请模式时长/统计范围<br/>修改后高亮显示本次变更"]
+        CFP_MANAGE["管理码模式:<br/>选中项可直接修改<br/>管理码: 6位TotpInputField<br/>[不保存] [保存修改]"]
+        CFP_REQUEST["申请模式:<br/>选中项修改高亮显示<br/>[不保存] [生成调整指令]<br/>QR/字符串 被控端确认后执行"]
     end
 
     %% ==================== 被控端主页 ====================
-    CDH["被控端主页<br/>TopAppBar: PeerLock 被控端 + 设置图标<br/>返回: 无 顶级页<br/>StatusCard: 已配对 接受控制方管理<br/>管控方: 设备名 (身份指纹摘要)<br/>受限应用: com.app1 com.app2<br/>[使用统计] OutlinedButton<br/>[发送统计] OutlinedButton<br/>[接收指令] OutlinedButton<br/>[管理策略] OutlinedButton<br/>底部红色: [申请解除] 需5s确认后输入终止码"]
+    CDH["被控端主页<br/>TopAppBar: PeerLock 被控端 + 设置图标<br/>返回: 无 顶级页<br/>StatusCard: 已配对 接受控制方管理<br/>管控方: 设备名 (身份指纹摘要)<br/>受限应用: com.app1 com.app2<br/>[使用统计] OutlinedButton<br/>[接收指令] OutlinedButton<br/>[管理策略] OutlinedButton"]
 
     %% ==================== 被控端申请解除 ====================
     subgraph CTRLLED_UNBIND ["申请解除 (被控端)"]
         CU_WARNING["⚠️ 警告信息:<br/>申请解除将解除与管控方的配对关系<br/>管控方的管控将被解除<br/>加密材料将被清除<br/>Device Owner 权限保留<br/><br/>[确认] Button 5s冷却灰色不可点"]
-        CU_INPUT["输入终止码:<br/>管控方提供的终止码<br/>6位 TotpInputField<br/>验证通过后立刻执行解绑<br/>清除加密材料 返回主页<br/>提示: 配对已解除"]
-        CU_L2_HINT["高级解除 (L2):<br/>连点7次此处展开<br/>需ADB命令 移除DO和密钥<br/>[开始验证] Button<br/>挑战码红色 [挑战码] 输入框<br/>[验证] Button<br/>通过: ADB命令 monospace<br/>执行后: L2 解除已执行"]
+        CU_INPUT["输入终止码:<br/>管控方提供的终止码<br/>6位 TotpInputField<br/>验证通过后立刻执行解绑<br/>清除加密材料 返回主页<br/>提示: 配对已解除<br/><br/>(L2高级解除: 设置版本号连点7次后此处展开显示)"]
+        CU_L2_HINT["L2 高级解除 (版本号连点7次解锁 5分钟窗口期):<br/>超过5分钟自动恢复隐藏 需重新点击<br/>需ADB命令 移除DO和密钥<br/>[开始验证] Button<br/>挑战码红色 [挑战码] 输入框<br/>[验证] Button<br/>通过: ADB命令 monospace<br/>执行后: L2 解除已执行"]
     end
 
     %% ==================== 被控端接收指令页 ====================
@@ -104,29 +105,28 @@ flowchart TD
     end
 
     %% ==================== 被控端策略管理页 ====================
-    subgraph CONTROLLED_POLICY ["策略管理页 (被控端) - 两个Tab"]
-        CP_TAB_APP["应用策略 Tab:<br/>当前策略列表:<br/>com.app1 每日30分钟 09:00-22:00<br/>com.app2 每日60分钟<br/>每项策略右侧 [修改] 按钮<br/>修改需管理码验证 或生成配置变更请求"]
-        CP_TAB_CONFIG["配置参数 Tab:<br/>默认解锁时长: 5分钟(可调)<br/>申请模式默认时长: 5分钟(可调)<br/>统计默认附带范围: 最近1天(可调)<br/>修改需管理码验证"]
-        CP_EDIT["修改策略:<br/>调整时长/时段参数<br/>需输入管理码验证 或 生成配置变更请求<br/>管理码: 6位TotpInputField<br/>生成请求: QR/字符串 发给控制端审批"]
+    subgraph CONTROLLED_POLICY ["策略管理页 (被控端) - 两个Tab 两种模式"]
+        CP_MODE["模式切换: 管理码模式 | 申请模式"]
+        CP_TAB_APP["应用策略 Tab:<br/>当前策略列表:<br/>com.app1 每日30分钟 09:00-22:00<br/>com.app2 每日60分钟<br/>多选 FilterChip"]
+        CP_TAB_CONFIG["配置参数 Tab:<br/>默认解锁时长: 5分钟(可调)<br/>申请模式默认时长: 5分钟(可调)<br/>统计默认附带范围: 最近1天(可调)"]
+        CP_MANAGE["管理码模式:<br/>选中项可直接修改参数<br/>修改高亮显示本次变更<br/>管理码: 6位TotpInputField<br/>[不保存] [保存修改]"]
+        CP_REQUEST["申请模式:<br/>选中项调整参数高亮显示<br/>[不保存] [生成配置变更请求]<br/>QR/字符串 发给管控方审批"]
     end
 
     %% ==================== 申请解锁页 ====================
     subgraph UNLOCK_REQUEST ["申请解锁页"]
-        UR_QUICK["快速码模式:<br/>选择受限应用 FilterChip (必选)<br/>输入6位解锁码<br/>[6位TotpInputField]<br/>解锁时长 5分钟(默认 可配置)<br/>[切换到申请模式]"]
-        UR_REQUEST["申请模式:<br/>选择要解锁的应用 FilterChip (必选)<br/>请求时长 5分钟(默认 可配置)<br/>☐ 附带统计数据(默认附带范围可配置)<br/>[生成申请码] 需选中应用<br/>生成后: 请让控制方扫描 QR码<br/>[复制申请数据] 剪贴板<br/>[切换到快速码模式]"]
+        UR_QUICK["快速码模式:<br/>选择受限应用 FilterChip (多选必选)<br/>输入6位解锁码<br/>[6位TotpInputField]<br/>解锁时长 5分钟(默认 可配置)<br/>[切换到申请模式]"]
+        UR_REQUEST["申请模式:<br/>选择要解锁的应用 FilterChip (多选必选)<br/>请求时长 5分钟(默认 可配置)<br/>☐ 附带统计数据(默认附带范围可配置)<br/>顶部栏确认: [生成申请码]<br/>生成后: 请让控制方扫描 QR码<br/>[复制申请数据] 剪贴板<br/>[切换到快速码模式]"]
     end
 
-    %% ==================== 使用统计页 ====================
-    ST["使用统计页<br/>TopAppBar: 返回箭头<br/>[今天] [本周] [本月] FilterChip<br/>小时柱状图 Canvas 今天:<br/>X轴 0-23时 Y轴 分钟 点击下钻<br/>日折线图 Canvas 本周/本月:<br/>X轴 日期 Y轴 分钟 点击下钻<br/>应用明细: com.app1 120分 启动8次"]
-
-    %% ==================== 发送统计页 ====================
-    PUSH_STATS["发送统计页<br/>TopAppBar: 返回箭头 + 发送统计<br/>时间范围: 最近1天/7天/30天/全部 FilterChip<br/>数据量大时: QR不可承载则切换为<br/>加密文件导出(同现有传输加密)<br/>预览: 统计数据摘要<br/>[生成统计报告] QR/字符串/文件<br/>[复制数据] 剪贴板"]
+    %% ==================== 使用统计页 (统一) ====================
+    ST["使用统计页<br/>TopAppBar: 返回箭头 + 设备名<br/>右上角操作:<br/>  管控端: [请求统计] → 生成QR/字符串 → 审批接收<br/>  被控端: [发送统计] → 生成QR/字符串/文件<br/>[今天] [本周] [本月] FilterChip<br/>小时柱状图 Canvas 今天:<br/>X轴 0-23时 Y轴 分钟 点击下钻<br/>日折线图 Canvas 本周/本月:<br/>X轴 日期 Y轴 分钟 点击下钻<br/>应用明细: com.app1 120分 启动8次<br/>时间范围: 最近1天/7天/30天/全部 FilterChip<br/>数据量大时QR不可承载则切换为加密文件导出"]
 
     %% ==================== 设置页 ====================
-    SET["设置页<br/>TopAppBar: 返回箭头 + 设置<br/>Device Owner: ✓已设置(灰)/✗未设置(可点击)<br/>电池优化: ✓已关闭(灰)/✗未关闭(可点击)<br/>[配对信息] 点击进入详情页<br/>主题模式: [跟随系统] [浅色] [深色] FilterChip<br/>语言: [中文] [English] FilterChip<br/>[切换角色] 回角色选择页(原配置保持运行)<br/>[身份重置] 条件满足时可用 10s确认"]
+    SET["设置页<br/>TopAppBar: 返回箭头 + 设置<br/>Device Owner: ✓已设置(灰)/✗未设置(可点击)<br/>电池优化: ✓已关闭(灰)/✗未关闭(可点击)<br/>[配对信息] 点击进入详情页<br/>主题模式: [跟随系统] [浅色] [深色] FilterChip<br/>语言: [中文] [English] FilterChip<br/>[切换角色] 回角色选择页(原配置保持运行)<br/>[身份重置] 红色 条件满足时可用 10s确认<br/>版本号: 连点7次解锁L2高级解除(无任何提示)"]
 
     %% ==================== 配对信息页 ====================
-    PAIR_INFO["配对信息页 (FLAG_SECURE)<br/>当前配对:<br/>  对方设备名: Galaxy S24<br/>  身份指纹: B7:1E:...<br/>  配对时间: 2026-05-02<br/>  会话ID: a3f8-...<br/>  状态: ACTIVE<br/><br/>管控端操作:<br/>  [查看验证码]<br/>  [申请删除种子] 被控端确认后可操作<br/><br/>历史配对记录:<br/>  · Pixel 7 REVOKED 可申请删除种子<br/>  · [归档记录] 查看已归档会话"]
+    PAIR_INFO["配对信息页 (FLAG_SECURE)<br/>根据当前角色显示不同内容:<br/>未配对角色的选项不显示<br/><br/>管控端:<br/>  对方设备名: Galaxy S24<br/>  身份指纹: B7:1E:...<br/>  配对时间: 2026-05-02<br/>  会话ID: a3f8-...<br/>  状态: ACTIVE<br/>  [查看验证码]<br/>  [申请删除种子] 被控端确认后可操作<br/>  底部红色: [显示终止码] 5s警告后显示<br/><br/>被控端:<br/>  对方设备名: Galaxy S24<br/>  身份指纹: B7:1E:...<br/>  配对时间: 2026-05-02<br/>  会话ID: a3f8-...<br/>  状态: ACTIVE<br/>  底部红色: [申请解除] 5s警告后输入终止码<br/>  (L2高级解除: 版本号连点7次后此处展开)<br/><br/>历史配对记录 (双端共用):<br/>  · Pixel 7 REVOKED 可申请删除种子<br/>  · 管控端: 可查看收到的删除申请及处理结果<br/>  · [归档记录] 查看已归档会话"]
 
     %% ==================== 申请删除种子 (被控端) ====================
     subgraph SEED_DELETE ["申请删除种子 - 历史配对记录中"]
@@ -181,9 +181,9 @@ flowchart TD
 
     %% ==================== 管控端主页 流转 ====================
     CH -->|审批请求| RA_IDLE
-    CH -->|显示终止码| CD_WARNING
     CH -->|使用统计| ST
-    CH -->|单向控制| SC_TAB
+    CH -->|解锁应用| UA_SELECT
+    CH -->|调整策略| CFP_TAB
     CH -->|设置图标| SET
 
     %% ==================== 审批请求页 ====================
@@ -192,13 +192,17 @@ flowchart TD
     RA_REVIEW -->|批准或拒绝| RA_RESP
     RA_RESP -->|完成| RA_IDLE
 
-    %% ==================== 单向控制页 ====================
-    SC_TAB -->|解锁| SC_UNLOCK
-    SC_TAB -->|调整| SC_ADJUST
-    SC_TAB -->|统计| SC_STATS
-    SC_UNLOCK -.->|返回| CH
-    SC_ADJUST -.->|返回| CH
-    SC_STATS -.->|返回| CH
+    %% ==================== 管控端解锁应用 ====================
+    UA_SELECT -.->|返回| CH
+
+    %% ==================== 管控端调整策略 ====================
+    CFP_TAB -.->|返回| CH
+    CFP_TAB -->|管理码模式| CFP_MANAGE
+    CFP_TAB -->|申请模式| CFP_REQUEST
+    CFP_TAB -->|切换Tab| CFP_APP
+    CFP_TAB -->|切换Tab| CFP_CONFIG
+    CFP_MANAGE -.->|返回| CH
+    CFP_REQUEST -.->|返回| CH
 
     %% ==================== 管控端终止码页 ====================
     CD_WARNING -->|5s确认| CD_SHOW
@@ -207,10 +211,8 @@ flowchart TD
     %% ==================== 被控端主页 流转 ====================
     CDH -->|点击应用卡片| UR_QUICK
     CDH -->|使用统计| ST
-    CDH -->|发送统计| PUSH_STATS
     CDH -->|接收指令| RC_IDLE
     CDH -->|管理策略| CP_TAB_APP
-    CDH -->|申请解除| CU_WARNING
     CDH -->|设置图标| SET
 
     %% ==================== 接收指令页 内部 ====================
@@ -226,23 +228,22 @@ flowchart TD
 
     %% ==================== 被控端策略管理页 内部 ====================
     CP_TAB_APP -.->|返回| CDH
-    CP_TAB_APP -->|点击修改| CP_EDIT
+    CP_TAB_APP -->|管理码模式| CP_MANAGE
+    CP_TAB_APP -->|申请模式| CP_REQUEST
     CP_TAB_APP -->|切换Tab| CP_TAB_CONFIG
     CP_TAB_CONFIG -->|切换Tab| CP_TAB_APP
     CP_TAB_CONFIG -.->|返回| CDH
-    CP_EDIT -.->|返回| CP_TAB_APP
+    CP_MANAGE -.->|返回| CDH
+    CP_REQUEST -.->|返回| CDH
 
     %% ==================== 接收指令-策略修改关联 ====================
-    RC_ADJUST -->|确认执行策略变更| CP_LIST
+    RC_ADJUST -->|确认执行策略变更| CP_TAB_APP
 
     %% ==================== 申请解锁页 ====================
     UR_QUICK -.->|返回| CDH
     UR_REQUEST -.->|返回| CDH
     UR_QUICK -->|切换到申请模式| UR_REQUEST
     UR_REQUEST -->|切换到快速码模式| UR_QUICK
-
-    %% ==================== 发送统计页 ====================
-    PUSH_STATS -.->|返回| CDH
 
     %% ==================== 使用统计页 ====================
     ST -.->|返回管控端主页| CH
@@ -260,6 +261,8 @@ flowchart TD
 
     %% ==================== 配对信息页 ====================
     PAIR_INFO -.->|返回| SET
+    PAIR_INFO -->|管控端-显示终止码| CD_WARNING
+    PAIR_INFO -->|被控端-申请解除| CU_WARNING
     PAIR_INFO -->|历史记录申请删除种子| SD_INFO
 
     %% ==================== 被控端申请解除流程 ====================
@@ -271,11 +274,10 @@ flowchart TD
 
     %% ==================== 申请删除种子流程 ====================
     SD_INFO -->|生成删除请求| SD_GEN
+    SD_GEN -->|发送给管控方| CSD_AUTO
     SD_GEN -.->|返回| PAIR_INFO
     SD_ARCHIVE -.->|返回| PAIR_INFO
-
-    %% ==================== 配置策略页 ====================
-    POLICY_CONFIG -.->|返回| SET
+    CSD_AUTO -->|自动删除种子+记录| PAIR_INFO
 
     %% ==================== 样式 ====================
     style APP fill:#E3F2FD,color:#000
@@ -303,17 +305,25 @@ flowchart TD
     style RA_IDLE fill:#C8E6C9,color:#000
     style RA_REVIEW fill:#C8E6C9,color:#000
     style RA_RESP fill:#C8E6C9,color:#000
-    style SC_TAB fill:#C8E6C9,color:#000
-    style SC_UNLOCK fill:#C8E6C9,color:#000
-    style SC_ADJUST fill:#C8E6C9,color:#000
-    style SC_STATS fill:#C8E6C9,color:#000
-    style EM_L1 fill:#FFCDD2,color:#000
-    style EM_L2 fill:#FFCDD2,color:#000
+    style UNLOCK_APP fill:#C8E6C9,color:#000
+    style UA_SELECT fill:#C8E6C9,color:#000
+    style CTRL_POLICY fill:#C8E6C9,color:#000
+    style CFP_TAB fill:#C8E6C9,color:#000
+    style CFP_APP fill:#C8E6C9,color:#000
+    style CFP_CONFIG fill:#C8E6C9,color:#000
+    style CFP_MANAGE fill:#C8E6C9,color:#000
+    style CFP_REQUEST fill:#C8E6C9,color:#000
+
+    style CTRLLED_UNBIND fill:#FFCDD2,color:#000
+    style CU_WARNING fill:#FFCDD2,color:#000
+    style CU_INPUT fill:#FFCDD2,color:#000
+    style CU_L2_HINT fill:#FFCDD2,color:#000
+
     style CDH fill:#FFF3E0,color:#000
     style UR_QUICK fill:#FFE0B2,color:#000
     style UR_REQUEST fill:#FFE0B2,color:#000
-    style PUSH_STATS fill:#E3F2FD,color:#000
-    style UNBIND_INPUT fill:#FFCDD2,color:#000
+
+
     style SD_INFO fill:#FFEBEE,color:#000
     style SD_GEN fill:#FFEBEE,color:#000
     style SD_ARCHIVE fill:#FFEBEE,color:#000
@@ -321,13 +331,16 @@ flowchart TD
     style ST fill:#E3F2FD,color:#000
     style SET fill:#EDE7F6,color:#000
     style PAIR_INFO fill:#EDE7F6,color:#000
-    style POLICY_CONFIG fill:#EDE7F6,color:#000
+
     style RECEIVE_CMD fill:#FFE0B2,color:#000
     style RC_IDLE fill:#FFE0B2,color:#000
     style RC_UNLOCK fill:#FFE0B2,color:#000
     style RC_ADJUST fill:#FFE0B2,color:#000
     style RC_STATS fill:#FFE0B2,color:#000
     style CONTROLLED_POLICY fill:#FFF3E0,color:#000
-    style CP_LIST fill:#FFF3E0,color:#000
-    style CP_EDIT fill:#FFF3E0,color:#000
+    style CP_TAB_APP fill:#FFF3E0,color:#000
+    style CP_TAB_CONFIG fill:#FFF3E0,color:#000
+    style CP_MODE fill:#FFF3E0,color:#000
+    style CP_MANAGE fill:#FFF3E0,color:#000
+    style CP_REQUEST fill:#FFF3E0,color:#000
 ```
