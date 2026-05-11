@@ -23,6 +23,7 @@ data class DeviceOwnerSetupUiState(
     val showWirelessGuide: Boolean = false,
     val isBatteryExempt: Boolean = false,
     val batteryRequested: Boolean = false,
+    val statusMessage: String? = null,
 )
 
 @HiltViewModel
@@ -50,7 +51,11 @@ class DeviceOwnerSetupViewModel @Inject constructor(
 
     fun checkDeviceOwnerStatus() {
         val isOwner = deviceOwnerManager.isDeviceOwner()
-        _uiState.value = _uiState.value.copy(isDeviceOwner = isOwner, isChecked = true)
+        _uiState.value = _uiState.value.copy(
+            isDeviceOwner = isOwner,
+            isChecked = true,
+            statusMessage = if (!isOwner) "Device Owner 未设置，请先在电脑上执行命令" else null,
+        )
     }
 
     fun toggleWirelessGuide() {

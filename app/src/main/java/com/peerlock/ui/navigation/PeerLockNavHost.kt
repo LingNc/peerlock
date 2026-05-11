@@ -52,14 +52,10 @@ fun PeerLockNavHost(
             RoleSelectionScreen(
                 onRoleSelected = { role ->
                     if (role == "controller") {
-                        navController.navigate(Routes.pairing("controller")) {
-                            popUpTo(Routes.ROLE_SELECTION) { inclusive = true }
-                        }
+                        navController.navigate(Routes.pairing("controller"))
                     } else {
                         // 被控端先走 DO + 电池优化检查
-                        navController.navigate(Routes.DEVICE_OWNER_SETUP) {
-                            popUpTo(Routes.ROLE_SELECTION) { inclusive = true }
-                        }
+                        navController.navigate(Routes.DEVICE_OWNER_SETUP)
                     }
                 }
             )
@@ -78,7 +74,8 @@ fun PeerLockNavHost(
                     navController.navigate(destination) {
                         popUpTo(0) { inclusive = true }
                     }
-                }
+                },
+                onBack = { navController.popBackStack() },
             )
         }
 
@@ -144,6 +141,7 @@ fun PeerLockNavHost(
                         }
                     }
                 },
+                onBack = { navController.popBackStack() },
             )
         }
 

@@ -8,12 +8,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -30,10 +35,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeviceOwnerSetupScreen(
     onContinue: () -> Unit,
     onSkip: () -> Unit,
+    onBack: () -> Unit = {},
     viewModel: DeviceOwnerSetupViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -61,6 +68,7 @@ fun DeviceOwnerSetupScreen(
             onToggleGuide = { viewModel.toggleWirelessGuide() },
             onDoComplete = { viewModel.advanceToDoComplete() },
             onSkip = onSkip,
+            onBack = onBack,
         )
         SetupPhase.BATTERY_OPTIMIZATION -> BatteryOptimizationStep(
             isExempt = uiState.isBatteryExempt,
@@ -75,10 +83,12 @@ fun DeviceOwnerSetupScreen(
                 viewModel.skipBatteryOptimization()
                 onContinue()
             },
+            onBack = onBack,
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DeviceOwnerStep(
     uiState: DeviceOwnerSetupUiState,
@@ -89,115 +99,139 @@ private fun DeviceOwnerStep(
     onToggleGuide: () -> Unit,
     onDoComplete: () -> Unit,
     onSkip: () -> Unit,
+    onBack: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text("设置 Device Owner", style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (uiState.isDeviceOwner) {
-            Icon(
-                imageVector = Icons.Default.CheckCircle,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(16.dp),
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("设置 Device Owner") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
             )
-            Text("Device Owner 已设置", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(24.dp))
-            Button(onClick = onDoComplete, modifier = Modifier.fillMaxWidth()) {
-                Text("继续")
-            }
-        } else {
-            Text(
-                text = "PeerLock 需要 Device Owner 权限才能限制应用使用。",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 无线 ADB 配对引导（Android 11+）
-            if (supportsWirelessAdb && !uiState.showWirelessGuide) {
-                OutlinedButton(
-                    onClick = onToggleGuide,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("使用无线 ADB 配对（无需电脑）")
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            if (uiState.showWirelessGuide) {
-                Text(
-                    text = "无线 ADB 配对步骤：",
-                    style = MaterialTheme.typography.titleSmall,
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (uiState.isDeviceOwner) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(16.dp),
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "1. 进入「设置 → 开发者选项 → 无线调试」", style = MaterialTheme.typography.bodyMedium)
-                Text(text = "2. 点击「使用配对码配对设备」", style = MaterialTheme.typography.bodyMedium)
-                Text(text = "3. 记下显示的配对码和 IP:端口", style = MaterialTheme.typography.bodyMedium)
-                Text(text = "4. 在电脑终端执行：adb pair <IP:端口>", style = MaterialTheme.typography.bodyMedium)
-                Text(text = "5. 输入配对码完成配对", style = MaterialTheme.typography.bodyMedium)
-                Text(text = "6. 然后执行以下命令设置 Device Owner：", style = MaterialTheme.typography.bodyMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = adbCommand,
-                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = { clipboardManager.setText(AnnotatedString(adbCommand)) },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("复制命令")
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = onToggleGuide,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("收起")
+                Text("Device Owner 已设置", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(onClick = onDoComplete, modifier = Modifier.fillMaxWidth()) {
+                    Text("继续")
                 }
             } else {
-                // 传统 USB ADB 方式
                 Text(
-                    text = "请在电脑上执行以下命令（设备需已通过 USB 连接且未添加任何账户）：",
+                    text = "PeerLock 需要 Device Owner 权限才能限制应用使用。",
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = adbCommand,
-                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { clipboardManager.setText(AnnotatedString(adbCommand)) },
+
+                // 无线 ADB 配对引导（Android 11+）
+                if (supportsWirelessAdb && !uiState.showWirelessGuide) {
+                    OutlinedButton(
+                        onClick = onToggleGuide,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("使用无线 ADB 配对（无需电脑）")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                if (uiState.showWirelessGuide) {
+                    Text(
+                        text = "无线 ADB 配对步骤：",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = "1. 进入「设置 → 开发者选项 → 无线调试」", style = MaterialTheme.typography.bodyMedium)
+                    Text(text = "2. 点击「使用配对码配对设备」", style = MaterialTheme.typography.bodyMedium)
+                    Text(text = "3. 记下显示的配对码和 IP:端口", style = MaterialTheme.typography.bodyMedium)
+                    Text(text = "4. 在电脑终端执行：adb pair <IP:端口>", style = MaterialTheme.typography.bodyMedium)
+                    Text(text = "5. 输入配对码完成配对", style = MaterialTheme.typography.bodyMedium)
+                    Text(text = "6. 然后执行以下命令设置 Device Owner：", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = adbCommand,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { clipboardManager.setText(AnnotatedString(adbCommand)) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("复制命令")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = onToggleGuide,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("收起")
+                    }
+                } else {
+                    // 传统 USB ADB 方式
+                    Text(
+                        text = "请在电脑上执行以下命令（设备需已通过 USB 连接且未添加任何账户）：",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = adbCommand,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { clipboardManager.setText(AnnotatedString(adbCommand)) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("复制命令")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = onCheckStatus,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("复制命令")
+                    Text("检查设置状态")
                 }
-            }
 
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedButton(
-                onClick = onCheckStatus,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("检查设置状态")
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-            OutlinedButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
-                Text("跳过（功能受限）")
+                uiState.statusMessage?.let { msg ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = msg,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (uiState.isDeviceOwner) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.error,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+                OutlinedButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
+                    Text("跳过（功能受限）")
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BatteryOptimizationStep(
     isExempt: Boolean,
@@ -206,69 +240,81 @@ private fun BatteryOptimizationStep(
     onVerify: () -> Unit,
     onContinue: () -> Unit,
     onSkip: () -> Unit,
+    onBack: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text("电池优化白名单", style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (isExempt) {
-            Icon(
-                imageVector = Icons.Default.CheckCircle,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(16.dp),
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("电池优化白名单") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
             )
-            Text("已关闭电池优化", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "PeerLock 后台巡检可以正常运行",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
-                Text("继续")
-            }
-        } else {
-            Text(
-                text = "PeerLock 需要关闭电池优化才能保持后台巡检正常运行。\n否则系统可能会延迟或停止巡检服务。",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = onRequest,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("关闭电池优化")
-            }
-
-            if (requested) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "请在弹出的系统对话框中点击「允许」",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (isExempt) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(16.dp),
                 )
+                Text("已关闭电池优化", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = onVerify,
+                Text(
+                    text = "PeerLock 后台巡检可以正常运行",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
+                    Text("继续")
+                }
+            } else {
+                Text(
+                    text = "PeerLock 需要关闭电池优化才能保持后台巡检正常运行。\n否则系统可能会延迟或停止巡检服务。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = onRequest,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("检查是否已关闭")
+                    Text("关闭电池优化")
                 }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp))
-            OutlinedButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
-                Text("跳过（后台巡检可能不稳定）")
+                if (requested) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "请在弹出的系统对话框中点击「允许」",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = onVerify,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("检查是否已关闭")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+                OutlinedButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
+                    Text("跳过（后台巡检可能不稳定）")
+                }
             }
         }
     }
