@@ -85,7 +85,7 @@ class ControlledViewModel @Inject constructor(
         }
     }
 
-    fun verifyQuickCode(code: String, targetPackage: String, durationMinutes: Int) {
+    fun verifyQuickCode(code: String, targetPackage: String?, durationMinutes: Int) {
         viewModelScope.launch {
             val seed = seedManager.retrieveSeed(KeyType.UNLOCK)
             if (seed == null) {
@@ -94,10 +94,18 @@ class ControlledViewModel @Inject constructor(
             }
             val valid = totpEngine.verifyCode(seed, code, tolerance = 1)
             if (valid) {
-                policyEngine.recordUnlock(targetPackage, durationMinutes)
-                policyEngine.unsuspendApp(targetPackage)
+                val packages = if (targetPackage.isNullOrBlank()) {
+                    _uiState.value.policies.map { it.targetPackage }
+                } else {
+                    listOf(targetPackage)
+                }
+                for (pkg in packages) {
+                    policyEngine.recordUnlock(pkg, durationMinutes)
+                    policyEngine.unsuspendApp(pkg)
+                }
+                val desc = if (packages.size == 1) packages[0] else "全部受限应用"
                 _uiState.value = _uiState.value.copy(
-                    quickCodeResult = "已解锁 $targetPackage，${durationMinutes} 分钟后自动暂停",
+                    quickCodeResult = "已解锁 $desc，${durationMinutes} 分钟后自动暂停",
                 )
             } else {
                 _uiState.value = _uiState.value.copy(error = "验证码错误")

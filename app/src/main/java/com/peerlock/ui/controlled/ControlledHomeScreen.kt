@@ -35,7 +35,7 @@ import com.peerlock.ui.common.StatusCard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ControlledHomeScreen(
-    onRequestUnlock: () -> Unit = {},
+    onRequestUnlock: (String?) -> Unit = {},
     onNavigateToStats: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     viewModel: ControlledViewModel = hiltViewModel(),
@@ -98,7 +98,7 @@ fun ControlledHomeScreen(
             } else {
                 items(uiState.policies) { policy ->
                     Card(
-                        onClick = onRequestUnlock,
+                        onClick = { onRequestUnlock(policy.targetPackage) },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Row(modifier = Modifier.padding(16.dp)) {

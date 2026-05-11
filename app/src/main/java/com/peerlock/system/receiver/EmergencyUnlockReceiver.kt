@@ -36,8 +36,8 @@ class EmergencyUnlockReceiver : BroadcastReceiver() {
         if (intent.action != ACTION_EMERGENCY) return
 
         val nonce = intent.getStringExtra(EXTRA_NONCE)
-        if (nonce == null) {
-            Log.w(TAG, "缺少 nonce 参数")
+        if (nonce == null || !nonce.matches(Regex("^[0-9a-f]{16}$"))) {
+            Log.w(TAG, "nonce 格式无效")
             return
         }
 

@@ -40,7 +40,8 @@ fun UnlockRequestScreen(
     val uiState by viewModel.uiState.collectAsState()
     var selectedPackage by remember { mutableStateOf("") }
     var durationMinutes by remember { mutableStateOf("30") }
-    var useQuickCode by remember { mutableStateOf(false) }
+    // 默认：无预选包名时显示快速码模式，有预选包名时显示扫码模式
+    var useQuickCode by remember { mutableStateOf(true) }
 
     Scaffold(
         topBar = {
@@ -61,41 +62,36 @@ fun UnlockRequestScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("选择应用", style = MaterialTheme.typography.titleMedium)
-            uiState.policies.forEach { policy ->
-                FilterChip(
-                    selected = selectedPackage == policy.targetPackage,
-                    onClick = { selectedPackage = policy.targetPackage },
-                    label = { Text(policy.targetPackage) },
-                )
-            }
-
-            OutlinedTextField(
-                value = durationMinutes,
-                onValueChange = { durationMinutes = it.filter { c -> c.isDigit() } },
-                label = { Text("请求时长（分钟）") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-
             // 模式切换
             OutlinedButton(
                 onClick = { useQuickCode = !useQuickCode },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(if (useQuickCode) "切换到扫码模式" else "切换到快速码模式")
+                Text(if (useQuickCode) "切换到申请模式（选择应用 + 扫码）" else "切换到快速码模式（直接输入 TOTP 码）")
             }
 
             if (useQuickCode) {
-                // 快速码模式：输入 6 位 TOTP 码
-                Text("请输入控制方提供的 6 位解锁码", style = MaterialTheme.typography.bodyMedium)
+                // 快速码模式：无需选择包名，输入 6 位 TOTP 码即可解锁全部受限应用
+                Text("输入控制方提供的 6 位解锁码", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "将解锁所有受限应用",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 TotpInputField(
                     onCodeComplete = { code ->
                         viewModel.verifyQuickCode(
                             code,
-                            selectedPackage,
+                            null,
                             durationMinutes.toIntOrNull() ?: 30,
                         )
                     },
+                )
+                OutlinedTextField(
+                    value = durationMinutes,
+                    onValueChange = { durationMinutes = it.filter { c -> c.isDigit() } },
+                    label = { Text("解锁时长（分钟）") },
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 uiState.quickCodeResult?.let { result ->
                     Text(text = result, color = MaterialTheme.colorScheme.primary)
@@ -110,7 +106,23 @@ fun UnlockRequestScreen(
                     }
                 }
             } else {
-                // 扫码模式：生成请求二维码
+                // 申请模式：选择应用 + 生成请求二维码
+                Text("选择要解锁的应用", style = MaterialTheme.typography.titleMedium)
+                uiState.policies.forEach { policy ->
+                    FilterChip(
+                        selected = selectedPackage == policy.targetPackage,
+                        onClick = { selectedPackage = policy.targetPackage },
+                        label = { Text(policy.targetPackage) },
+                    )
+                }
+
+                OutlinedTextField(
+                    value = durationMinutes,
+                    onValueChange = { durationMinutes = it.filter { c -> c.isDigit() } },
+                    label = { Text("请求时长（分钟）") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
                 Button(
                     onClick = {
                         viewModel.generateUnlockRequest(selectedPackage, durationMinutes.toIntOrNull() ?: 30)
