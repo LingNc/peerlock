@@ -12,6 +12,7 @@ import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.ui.common.PlaceholderScreen
 import com.peerlock.ui.controlled.ControlledHomeScreen
 import com.peerlock.ui.controlled.ReceiveCommandScreen
+import com.peerlock.ui.controlled.StrategyManagementScreen
 import com.peerlock.ui.controlled.UnlockRequestScreen
 import com.peerlock.ui.controller.ControllerHomeScreen
 import com.peerlock.ui.controller.DeviceSelectScreen
@@ -166,7 +167,7 @@ fun PeerLockNavHost(
         }
 
         composable(Routes.ADJUST_POLICY) {
-            PlaceholderScreen(title = "调整策略", onBack = { navController.popBackStack() })
+            StrategyManagementScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.TERMINATE_CODE) {
@@ -194,7 +195,7 @@ fun PeerLockNavHost(
         }
 
         composable(Routes.STRATEGY_MANAGEMENT) {
-            PlaceholderScreen(title = "策略管理", onBack = { navController.popBackStack() })
+            StrategyManagementScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.APPLY_UNBIND) {

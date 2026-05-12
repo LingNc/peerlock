@@ -1,0 +1,232 @@
+package com.peerlock.ui.controlled
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.peerlock.ui.settings.PolicyMode
+import com.peerlock.ui.settings.StrategyManagementViewModel
+import com.peerlock.ui.settings.StrategyTab
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StrategyManagementScreen(
+    onBack: () -> Unit,
+    viewModel: StrategyManagementViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val title = if (uiState.role == "controller") "调整策略" else "策略管理"
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(title) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            // Tab 切换
+            TabRow(selectedTabIndex = uiState.currentTab.ordinal) {
+                Tab(
+                    selected = uiState.currentTab == StrategyTab.APP_POLICY,
+                    onClick = { viewModel.switchTab(StrategyTab.APP_POLICY) },
+                    text = { Text("应用策略") },
+                )
+                Tab(
+                    selected = uiState.currentTab == StrategyTab.CONFIG_PARAMS,
+                    onClick = { viewModel.switchTab(StrategyTab.CONFIG_PARAMS) },
+                    text = { Text("配置参数") },
+                )
+            }
+
+            when (uiState.currentTab) {
+                StrategyTab.APP_POLICY -> {
+                    AppPolicyTab(
+                        state = uiState.appPolicy,
+                        onToggle = { viewModel.togglePolicy(it) },
+                        onSelectAll = { viewModel.selectAllPolicies() },
+                        onUpdateLimit = { id, min -> viewModel.updateDailyLimit(id, min) },
+                        onSwitchMode = { viewModel.switchMode(it) },
+                        onSave = { viewModel.saveChanges() },
+                        onGenerateRequest = { viewModel.generateChangeRequest() },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                StrategyTab.CONFIG_PARAMS -> {
+                    ConfigParamsTab(
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppPolicyTab(
+    state: com.peerlock.ui.settings.PolicyTabState,
+    onToggle: (Long) -> Unit,
+    onSelectAll: () -> Unit,
+    onUpdateLimit: (Long, Int) -> Unit,
+    onSwitchMode: (PolicyMode) -> Unit,
+    onSave: () -> Unit,
+    onGenerateRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("选择目标应用", style = MaterialTheme.typography.titleMedium)
+                androidx.compose.material3.TextButton(onClick = onSelectAll) {
+                    Text("全选")
+                }
+            }
+        }
+
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = state.mode == PolicyMode.MANAGEMENT_CODE,
+                    onClick = { onSwitchMode(PolicyMode.MANAGEMENT_CODE) },
+                    label = { Text("管理码模式") },
+                )
+                FilterChip(
+                    selected = state.mode == PolicyMode.REQUEST,
+                    onClick = { onSwitchMode(PolicyMode.REQUEST) },
+                    label = { Text("申请模式") },
+                )
+            }
+        }
+
+        items(state.policies) { policy ->
+            val isSelected = policy.id in state.selectedIds
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isSelected) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    },
+                ),
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { onToggle(policy.id) },
+                        label = { Text(policy.targetPackage.substringAfterLast('.')) },
+                    )
+                    if (isSelected) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val currentLimit = state.changes[policy.id]?.dailyLimitMinutes
+                            ?: policy.dailyLimitMinutes
+                            ?: 60
+                        Text("日限制: $currentLimit 分钟", style = MaterialTheme.typography.bodySmall)
+                        Slider(
+                            value = currentLimit.toFloat(),
+                            onValueChange = { onUpdateLimit(policy.id, it.toInt()) },
+                            valueRange = 5f..480f,
+                            steps = 94,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            if (state.mode == PolicyMode.MANAGEMENT_CODE) {
+                Button(
+                    onClick = onSave,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = state.isDirty,
+                ) {
+                    Text("保存修改")
+                }
+            } else {
+                Button(
+                    onClick = onGenerateRequest,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = state.isDirty,
+                ) {
+                    Text("生成调整指令")
+                }
+            }
+        }
+
+        if (state.error != null) {
+            item {
+                Text(
+                    text = state.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+private fun ConfigParamsTab(
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+    ) {
+        Text("配置参数", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("默认解锁时长、申请模式默认时长等配置参数将在后续版本中支持。", style = MaterialTheme.typography.bodyMedium)
+    }
+}
