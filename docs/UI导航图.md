@@ -23,13 +23,13 @@ flowchart TD
         DO1["Phase 1: 设置 Device Owner<br/>TopAppBar: 返回箭头 + 标题<br/>返回: 角色选择页"]
         DO_CHECK{"isDeviceOwner?"}
         DO_ALREADY["Device Owner 已设置<br/>[继续] Button"]
-        DO_NOT_YET["需要 DO 权限才能限制应用<br/>无线 ADB: 6步说明 + adb命令 + 复制命令<br/>USB ADB: adb命令 + 复制命令<br/>[检查设置状态]<br/>[跳过功能受限]"]
+        DO_NOT_YET["需要 DO 权限才能限制应用<br/>被控端必须设置 否则无法配对<br/>无线 ADB: 6步说明 + adb命令 + 复制命令<br/>USB ADB: adb命令 + 复制命令<br/>[检查设置状态]<br/>(无跳过选项 被控端必须完成)"]
         DO_ADVANCE["advanceToDoComplete"]
         DO_BATTERY_CHECK{"isBatteryExempt?"}
         PHASE2_START["Phase 2: 电池优化白名单<br/>TopAppBar: 返回箭头 + 标题<br/>返回: 角色选择页"]
         BO_CHECK{"isBatteryExempt?"}
         BO_DONE["已关闭电池优化<br/>[继续]"]
-        BO_NOT["需关闭电池优化<br/>[关闭电池优化] 系统对话框<br/>[检查是否已关闭]<br/>[跳过后台巡检可能不稳定]"]
+        BO_NOT["需关闭电池优化<br/>被控端必须关闭 否则无法配对<br/>[关闭电池优化] 系统对话框<br/>[检查是否已关闭]<br/>(无跳过选项 被控端必须完成)"]
         DO_TO_PAIRING["进入配对页"]
     end
 
@@ -123,7 +123,10 @@ flowchart TD
     ST["使用统计页<br/>TopAppBar: 返回箭头 + 设备名<br/>右上角操作:<br/>  管控端: [请求统计] → 生成QR/字符串 → 审批接收<br/>  被控端: [发送统计] → 生成QR/字符串/文件<br/>[今天] [本周] [本月] FilterChip<br/>小时柱状图 Canvas 今天:<br/>X轴 0-23时 Y轴 分钟 点击下钻<br/>日折线图 Canvas 本周/本月:<br/>X轴 日期 Y轴 分钟 点击下钻<br/>应用明细: com.app1 120分 启动8次<br/>时间范围: 最近1天/7天/30天/全部 FilterChip<br/>数据量大时QR不可承载则切换为加密文件导出"]
 
     %% ==================== 设置页 ====================
-    SET["设置页<br/>TopAppBar: 返回箭头 + 设置<br/>Device Owner: ✓已设置(灰)/✗未设置(可点击)<br/>电池优化: ✓已关闭(灰)/✗未关闭(可点击)<br/>[配对信息] 点击进入详情页<br/>主题模式: [跟随系统] [浅色] [深色] FilterChip<br/>语言: [中文] [English] FilterChip<br/>[切换角色] 回角色选择页(原配置保持运行)<br/>[身份重置] 红色 条件满足时可用 10s确认<br/>版本号: 连点7次解锁L2高级解除(无任何提示)"]
+    SET["设置页<br/>TopAppBar: 返回箭头 + 设置<br/>Device Owner: ✓已设置(灰)/✗未设置(可点击)/<br/>  非被控端管控时: ✓已设置 可点击取消DO(10s确认)<br/>电池优化: ✓已关闭(灰)/✗未关闭(可点击)<br/>[配对信息] 点击进入详情页<br/>主题模式: [跟随系统] [浅色] [深色] FilterChip<br/>语言: [中文] [English] FilterChip<br/>[切换角色] 回角色选择页(原配置保持运行)<br/>[身份重置] 红色 条件满足时可用 10s确认<br/>版本号: 连点7次解锁L2高级解除(无任何提示)"]
+
+    %% ==================== 取消DO页 ====================
+    REVOKE_DO["取消 Device Owner<br/>TopAppBar: 返回箭头 + 取消DO<br/>⚠️ 警告: 取消后应用限制功能将失效<br/>需重新ADB设置才能恢复<br/><br/>[确认取消] 红色Button 10s冷却灰色不可点<br/>[返回]"]
 
     %% ==================== 配对信息页 ====================
     PAIR_INFO["配对信息页 (FLAG_SECURE)<br/>根据当前角色显示不同内容:<br/>未配对角色的选项不显示<br/><br/>管控端:<br/>  对方设备名: Galaxy S24<br/>  身份指纹: B7:1E:...<br/>  配对时间: 2026-05-02<br/>  会话ID: a3f8-...<br/>  状态: ACTIVE<br/>  [查看验证码]<br/>  [申请删除种子] 被控端确认后可操作<br/>  底部红色: [显示终止码] 5s警告后显示<br/><br/>被控端:<br/>  对方设备名: Galaxy S24<br/>  身份指纹: B7:1E:...<br/>  配对时间: 2026-05-02<br/>  会话ID: a3f8-...<br/>  状态: ACTIVE<br/>  底部红色: [申请解除] 5s警告后输入终止码<br/>  (L2高级解除: 版本号连点7次后此处展开)<br/><br/>历史配对记录 (双端共用):<br/>  · Pixel 7 REVOKED 可申请删除种子<br/>  · 管控端: 可查看收到的删除申请及处理结果<br/>  · [归档记录] 查看已归档会话"]
@@ -145,14 +148,14 @@ flowchart TD
     DO_CHECK -->|是| DO_ALREADY
     DO_CHECK -->|否| DO_NOT_YET
     DO_ALREADY --> DO_ADVANCE
-    DO_NOT_YET -->|跳过| DO_ADVANCE
+    DO_NOT_YET -->|检查后已设置| DO_ADVANCE
     DO_ADVANCE --> DO_BATTERY_CHECK
     DO_BATTERY_CHECK -->|是| DO_TO_PAIRING
     DO_BATTERY_CHECK -->|否| PHASE2_START
     PHASE2_START --> BO_CHECK
     BO_CHECK -->|是| BO_DONE
     BO_CHECK -->|否| BO_NOT
-    BO_NOT -->|跳过 / 关闭成功| DO_TO_PAIRING
+    BO_NOT -->|关闭成功| DO_TO_PAIRING
     BO_DONE --> DO_TO_PAIRING
     DO_TO_PAIRING --> P1_SHOW
 
@@ -254,6 +257,8 @@ flowchart TD
     SET -.->|返回管控端主页| CH
     SET -.->|返回被控端主页| CDH
     SET -.->|返回设备选择页| DEV_SEL
+    SET -->|DO已设置且非被控端管控| REVOKE_DO
+    REVOKE_DO -.->|返回| SET
     SET -->|DO未设置点击| DO1
     SET -->|电池优化未关闭点击| PHASE2_START
     SET -->|配对信息| PAIR_INFO
@@ -330,6 +335,7 @@ flowchart TD
     style CSD_AUTO fill:#FFEBEE,color:#000
     style ST fill:#E3F2FD,color:#000
     style SET fill:#EDE7F6,color:#000
+    style REVOKE_DO fill:#FFCDD2,color:#000
     style PAIR_INFO fill:#EDE7F6,color:#000
 
     style RECEIVE_CMD fill:#FFE0B2,color:#000
