@@ -82,7 +82,8 @@ fun PeerLockNavHost(
                     } else {
                         navController.navigate(Routes.DEVICE_OWNER_SETUP)
                     }
-                }
+                },
+                onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
             )
         }
 
