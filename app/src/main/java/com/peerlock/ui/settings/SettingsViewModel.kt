@@ -2,12 +2,15 @@ package com.peerlock.ui.settings
 
 import android.app.Application
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.system.deviceadmin.DeviceOwnerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
@@ -54,8 +57,10 @@ class SettingsViewModel @Inject constructor(
         val count = _uiState.value.versionTapCount + 1
         if (count >= 7) {
             _uiState.value = _uiState.value.copy(versionTapCount = 0, l2Unlocked = true)
-            // 5 分钟后自动恢复
-            // TODO: 用延迟协程实现窗口期
+            viewModelScope.launch {
+                delay(5 * 60 * 1000L)
+                _uiState.value = _uiState.value.copy(l2Unlocked = false)
+            }
         } else {
             _uiState.value = _uiState.value.copy(versionTapCount = count)
         }
