@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.peerlock.data.db.entity.PairingSessionEntity
 import com.peerlock.data.pairing.PairingRepository
+import com.peerlock.data.seed.SeedManager
+import com.peerlock.domain.totp.KeyType
+import com.peerlock.domain.totp.TotpEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +24,8 @@ data class DeviceSelectUiState(
 @HiltViewModel
 class DeviceSelectViewModel @Inject constructor(
     private val pairingRepository: PairingRepository,
+    private val seedManager: SeedManager,
+    private val totpEngine: TotpEngine,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DeviceSelectUiState())
@@ -38,11 +43,15 @@ class DeviceSelectViewModel @Inject constructor(
     }
 
     fun showReceipt(device: PairingSessionEntity) {
-        // TODO: 生成回执 QR 数据（需要种子签名等）
-        _uiState.value = _uiState.value.copy(
-            showReceiptQr = true,
-            receiptQrData = "session:${device.sessionId}",
-        )
+        viewModelScope.launch {
+            val seed = seedManager.retrieveSeed(KeyType.SETTING)
+            val code = if (seed != null) totpEngine.generateCode(seed) else ""
+            val receipt = """{"sid":"${device.sessionId}","ts":${System.currentTimeMillis()},"sig":"$code"}"""
+            _uiState.value = _uiState.value.copy(
+                showReceiptQr = true,
+                receiptQrData = receipt,
+            )
+        }
     }
 
     fun dismissReceipt() {
