@@ -38,7 +38,7 @@ fun UnlockRequestScreen(
     viewModel: ControlledViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var selectedPackage by remember { mutableStateOf("") }
+    var selectedPackages by remember { mutableStateOf(setOf<String>()) }
     var durationMinutes by remember { mutableStateOf("30") }
     // 默认：无预选包名时显示快速码模式，有预选包名时显示扫码模式
     var useQuickCode by remember { mutableStateOf(true) }
@@ -110,9 +110,15 @@ fun UnlockRequestScreen(
                 Text("选择要解锁的应用", style = MaterialTheme.typography.titleMedium)
                 uiState.policies.forEach { policy ->
                     FilterChip(
-                        selected = selectedPackage == policy.targetPackage,
-                        onClick = { selectedPackage = policy.targetPackage },
-                        label = { Text(policy.targetPackage) },
+                        selected = policy.targetPackage in selectedPackages,
+                        onClick = {
+                            selectedPackages = if (policy.targetPackage in selectedPackages) {
+                                selectedPackages - policy.targetPackage
+                            } else {
+                                selectedPackages + policy.targetPackage
+                            }
+                        },
+                        label = { Text(policy.targetPackage.substringAfterLast('.')) },
                     )
                 }
 
@@ -125,9 +131,9 @@ fun UnlockRequestScreen(
 
                 Button(
                     onClick = {
-                        viewModel.generateUnlockRequest(selectedPackage, durationMinutes.toIntOrNull() ?: 30)
+                        viewModel.generateUnlockRequest(selectedPackages.first(), durationMinutes.toIntOrNull() ?: 30)
                     },
-                    enabled = selectedPackage.isNotEmpty(),
+                    enabled = selectedPackages.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("生成申请码")
