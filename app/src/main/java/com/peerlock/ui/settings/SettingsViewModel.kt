@@ -24,6 +24,7 @@ data class SettingsUiState(
     val versionTapCount: Int = 0,
     val l2Unlocked: Boolean = false,
     val showResetConfirm: Boolean = false,
+    val showBatteryGuide: Boolean = false,
     val resetCooldownSeconds: Int = 10,
     val isResetCooldownActive: Boolean = false,
     val resetComplete: Boolean = false,
@@ -89,6 +90,36 @@ class SettingsViewModel @Inject constructor(
             seedManager.clearSeeds()
             _uiState.value = _uiState.value.copy(showResetConfirm = false, resetComplete = true)
         }
+    }
+
+    fun showBatteryGuideDialog() {
+        _uiState.value = _uiState.value.copy(showBatteryGuide = true)
+    }
+
+    fun dismissBatteryGuide() {
+        _uiState.value = _uiState.value.copy(showBatteryGuide = false)
+    }
+
+    fun openBatterySettings() {
+        _uiState.value = _uiState.value.copy(showBatteryGuide = false)
+        try {
+            val intent = android.content.Intent(
+                android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                android.net.Uri.parse("package:${application.packageName}"),
+            ).apply { flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK }
+            application.startActivity(intent)
+        } catch (_: Exception) {
+            val intent = android.content.Intent(
+                android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS,
+            ).apply { flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK }
+            application.startActivity(intent)
+        }
+    }
+
+    fun refreshBatteryStatus() {
+        val pm = application.getSystemService(android.os.PowerManager::class.java)
+        val exempt = pm.isIgnoringBatteryOptimizations(application.packageName)
+        _uiState.value = _uiState.value.copy(isBatteryExempt = exempt)
     }
 
     fun cancelReset() {

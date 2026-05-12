@@ -1,7 +1,5 @@
 package com.peerlock.ui.settings
 
-import android.content.Intent
-import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,7 +29,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 
@@ -46,10 +43,36 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
 
     LaunchedEffect(uiState.resetComplete) {
         if (uiState.resetComplete) onNavigateToRoleSelection()
+    }
+
+    // 电池优化引导对话框
+    if (uiState.showBatteryGuide) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissBatteryGuide() },
+            title = { Text("关闭电池优化") },
+            text = {
+                Text(
+                    "PeerLock 需要关闭电池优化才能保持后台巡检正常运行。\n\n" +
+                        "操作步骤：\n" +
+                        "1. 点击下方「前往设置」\n" +
+                        "2. 在弹出的系统对话框中点击「允许」\n" +
+                        "3. 返回此页面检查状态"
+                )
+            },
+            confirmButton = {
+                Button(onClick = { viewModel.openBatterySettings() }) {
+                    Text("前往设置")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissBatteryGuide() }) {
+                    Text("取消")
+                }
+            },
+        )
     }
 
     // 身份重置确认对话框
@@ -122,7 +145,11 @@ fun SettingsScreen(
                 value = if (uiState.isBatteryExempt) "✓ 已关闭" else "✗ 未关闭",
                 enabled = true,
                 onClick = {
-                    context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                    if (uiState.isBatteryExempt) {
+                        // 已关闭，点击无操作
+                    } else {
+                        viewModel.showBatteryGuideDialog()
+                    }
                 },
             )
 
