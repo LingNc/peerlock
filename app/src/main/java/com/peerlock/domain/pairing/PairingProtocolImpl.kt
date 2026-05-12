@@ -7,6 +7,7 @@ import com.peerlock.domain.crypto.CryptoKeyPair
 import com.peerlock.domain.totp.KeyType
 import com.peerlock.domain.totp.TotpEngine
 import kotlinx.serialization.json.Json
+import java.security.MessageDigest
 import java.util.Base64
 import java.util.UUID
 
@@ -85,6 +86,18 @@ class PairingProtocolImpl(
         pairingRepository.storeRole("controller")
         seedManager.storeSeeds(seeds)
 
+        // 写入 Room
+        val fingerprint = computeFingerprint(peerPublicKey)
+        pairingRepository.createSession(
+            sessionId = request.id,
+            role = "controller",
+            peerDeviceName = request.name,
+            peerPublicKey = peerPublicKey,
+            myPublicKey = keyPair.publicKey,
+            signingPublicKey = keyPair.signingPublicKey,
+            identityFingerprint = fingerprint,
+        )
+
         return PairingResponse(
             pub = encodeBase64(keyPair.publicKey),
             signPub = encodeBase64(keyPair.signingPublicKey),
@@ -131,6 +144,19 @@ class PairingProtocolImpl(
             // 标记配对完成
             pairingRepository.markPaired()
 
+            // 写入 Room
+            val myPub = pairingRepository.getMyPublicKey()
+            val fingerprint = computeFingerprint(controllerEcdhPubKey)
+            pairingRepository.createSession(
+                sessionId = payload.id,
+                role = "controlled",
+                peerDeviceName = payload.name,
+                peerPublicKey = controllerEcdhPubKey,
+                myPublicKey = myPub ?: ByteArray(0),
+                signingPublicKey = controllerSignPubKey,
+                identityFingerprint = fingerprint,
+            )
+
             // 清除内存中的明文种子
             seeds.values.forEach { it.fill(0) }
 
@@ -152,4 +178,9 @@ class PairingProtocolImpl(
 
     private fun decodeBase64(encoded: String): ByteArray =
         Base64.getDecoder().decode(encoded)
+
+    private fun computeFingerprint(publicKey: ByteArray): String {
+        val hash = MessageDigest.getInstance("SHA-256").digest(publicKey)
+        return hash.take(4).joinToString("") { "%02x".format(it) }
+    }
 }

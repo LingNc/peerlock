@@ -85,6 +85,8 @@ class PairingProtocolImplTest {
 
         // 被控端处理响应
         coEvery { controlledRepo.getSessionId() } returns request.id
+        coEvery { controlledRepo.getMyPublicKey() } returns ByteArray(32) { it.toByte() }
+        coEvery { controlledRepo.createSession(any(), any(), any(), any(), any(), any(), any()) } returns mockk(relaxed = true)
         val result = controlledProtocol.processPairResponse(response)
 
         assertTrue(result is PairingResult.Success, "配对应成功，实际: $result")

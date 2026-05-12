@@ -62,8 +62,7 @@ fun PeerLockNavHost(
     pairingSessionDao: PairingSessionDao,
 ) {
     val startDestination = remember {
-        // V3 启动路由：仅管控配对→设备选择页，仅被控配对→被控主页，未配对/双端→角色选择
-        // TODO: 多会话成熟后改为查询 PairingSessionDao.getActiveByRole
+        // V3 启动路由：SecurePrefs 作为同步信号（PairingProtocolImpl 同步写入 Room）
         when {
             securePrefs.isPaired && securePrefs.role == "controller" -> Routes.DEVICE_SELECTION
             securePrefs.isPaired && securePrefs.role == "controlled" -> Routes.CONTROLLED_HOME
