@@ -56,7 +56,7 @@ class ApplyUnbindViewModel @Inject constructor(
     fun verifyTerminateCode(code: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            val seed = seedManager.retrieveSeed(KeyType.UNLOCK)
+            val seed = seedManager.retrieveSeed(KeyType.DESTROY)
             if (seed == null) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = "密钥缺失，无法验证终止码")
                 return@launch
