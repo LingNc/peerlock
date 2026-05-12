@@ -23,6 +23,7 @@ data class ReceiveCommandUiState(
     val policyChanges: List<String> = emptyList(),
     val error: String? = null,
     val isLoading: Boolean = false,
+    val executeSuccess: Boolean = false,
 )
 
 enum class ReceiveStep { IDLE, REVIEWING, EXECUTED }
@@ -41,6 +42,8 @@ class ReceiveCommandViewModel @Inject constructor(
     private val _scanTrigger = MutableStateFlow(0)
     val scanTrigger: StateFlow<Int> = _scanTrigger.asStateFlow()
 
+    private var pendingResponse: ResponseEnvelope? = null
+
     fun requestScan() {
         _scanTrigger.value++
     }
@@ -57,6 +60,7 @@ class ReceiveCommandViewModel @Inject constructor(
             when (val result = requestProtocol.processResponse(data, peerPubKeyBytes)) {
                 is ResponseResult.Success -> {
                     val envelope = result.envelope
+                    pendingResponse = envelope
                     when (val payload = envelope.payload) {
                         is ResponsePayload.UnlockResponse -> {
                             _uiState.value = _uiState.value.copy(
@@ -92,17 +96,35 @@ class ReceiveCommandViewModel @Inject constructor(
 
     fun confirmExecute() {
         viewModelScope.launch {
+            val response = pendingResponse ?: run {
+                _uiState.value = _uiState.value.copy(error = "指令数据丢失")
+                return@launch
+            }
             _uiState.value = _uiState.value.copy(isLoading = true)
-            // TODO: 从缓存中获取 response 并执行
-            _uiState.value = _uiState.value.copy(step = ReceiveStep.EXECUTED, isLoading = false)
+            val success = requestProtocol.executeResponse(response)
+            if (success) {
+                _uiState.value = _uiState.value.copy(
+                    step = ReceiveStep.EXECUTED,
+                    isLoading = false,
+                    executeSuccess = true,
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "执行失败（指令可能已被拒绝）",
+                )
+            }
+            pendingResponse = null
         }
     }
 
     fun reject() {
+        pendingResponse = null
         _uiState.value = ReceiveCommandUiState()
     }
 
     fun reset() {
+        pendingResponse = null
         _uiState.value = ReceiveCommandUiState()
     }
 
