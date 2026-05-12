@@ -18,6 +18,7 @@ import com.peerlock.ui.controller.ControllerHomeScreen
 import com.peerlock.ui.controller.DeviceSelectScreen
 import com.peerlock.ui.controller.RequestApprovalScreen
 import com.peerlock.ui.controller.UnlockAppScreen
+import com.peerlock.ui.emergency.EmergencyScreen
 import com.peerlock.ui.onboarding.DeviceOwnerSetupScreen
 import com.peerlock.ui.onboarding.PairingConfirmScreen
 import com.peerlock.ui.onboarding.PairingScreen
@@ -172,7 +173,7 @@ fun PeerLockNavHost(
         }
 
         composable(Routes.TERMINATE_CODE) {
-            PlaceholderScreen(title = "终止码", onBack = { navController.popBackStack() })
+            EmergencyScreen(onBack = { navController.popBackStack() })
         }
 
         // === 被控端 ===
