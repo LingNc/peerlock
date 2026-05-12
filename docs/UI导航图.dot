@@ -1,0 +1,638 @@
+// PeerLock V3 UI 导航图 — Graphviz DOT
+// 基于 PeerLockNavHost.kt 实际实现 + V3 设计文档
+// 渲染: dot -Tsvg UI导航图.dot -o UI导航图.svg
+//       dot -Tpng -Gdpi=300 UI导航图.dot -o UI导航图_300dpi.png
+
+digraph PeerLockUI {
+    // === 全局设置 ===
+    rankdir=TB;
+    splines=spline;
+    nodesep=0.8;
+    ranksep=1.0;
+    fontname="Noto Sans SC";
+    fontsize=11;
+    pad=0.4;
+    overlap=false;
+
+    // 默认节点: 矩形圆角, 较大最小尺寸
+    node [
+        fontname="Noto Sans SC",
+        fontsize=10,
+        style="filled,rounded",
+        shape=box,
+        penwidth=1.5,
+        margin="0.25,0.15",
+        width=2.0
+    ];
+    edge [
+        fontname="Noto Sans SC",
+        fontsize=9,
+        color="#546E7A",
+        penwidth=1.2
+    ];
+
+    // =================================================================
+    //  颜色说明
+    //  蓝色系: 初始化/启动    紫色系: 配对流程
+    //  绿色系: 管控端页面     橙色系: 被控端页面
+    //  灰紫:   共用页面       红色系: 危险操作
+    //  形状: box=页面  diamond=决策  doublecircle=入口/出口
+    // =================================================================
+
+    // ==================== 入口 ====================
+    START [
+        label="App 启动",
+        shape=doublecircle,
+        fillcolor="#1565C0",
+        fontcolor=white,
+        fontsize=13,
+        width=1.2,
+        height=1.2,
+        penwidth=2.5
+    ];
+
+    ROUTE_CHECK [
+        label="启动路由判断",
+        shape=diamond,
+        fillcolor="#E3F2FD",
+        color="#1565C0",
+        width=2.5,
+        height=1.2,
+        fontsize=11
+    ];
+
+    START -> ROUTE_CHECK [
+        label="检查 SecurePrefs\n.isPaired + .role",
+        color="#1565C0",
+        fontcolor="#1565C0"
+    ];
+
+    // ==================== 初始化流程 ====================
+    subgraph cluster_init {
+        label="初始化流程";
+        style="rounded,dashed";
+        color="#90CAF9";
+        bgcolor="#F5F9FF";
+        fontsize=13;
+        fontcolor="#1565C0";
+
+        RS [
+            label=<角色选择页<BR/><FONT POINT-SIZE="8" COLOR="#616161">PeerLock headlineLarge<BR/>[我要管控对方] Button<BR/>[我需要被管控] OutlinedButton</FONT>>,
+            fillcolor="#E3F2FD",
+            color="#1976D2"
+        ];
+
+        ALREADY [
+            label=<被控端已绑定提示<BR/><FONT POINT-SIZE="8" COLOR="#616161">该设备已被管控<BR/>需先解除配对才能重新配对<BR/>[去解除配对] / [返回]</FONT>>,
+            fillcolor="#FFCDD2",
+            color="#E53935"
+        ];
+
+        // DO 设置子流程
+        subgraph cluster_do {
+            label="DO + 电池优化设置 (被控端必选)";
+            style="rounded";
+            color="#F48FB1";
+            bgcolor="#FFF8F9";
+            fontsize=11;
+            fontcolor="#C2185B";
+
+            DO1 [
+                label=<Phase 1: Device Owner<BR/><FONT POINT-SIZE="8" COLOR="#616161">无线ADB / USB ADB<BR/>无跳过选项</FONT>>,
+                fillcolor="#FCE4EC",
+                color="#E91E63"
+            ];
+            DO_CHECK [
+                label="isDeviceOwner?",
+                shape=diamond,
+                fillcolor="#FCE4EC",
+                color="#E91E63",
+                width=2.0,
+                height=1.0
+            ];
+            DO_ALREADY [label="已设置 → 继续", fillcolor="#FCE4EC", color="#E91E63"];
+            DO_NOT [
+                label=<未设置: ADB引导<BR/><FONT POINT-SIZE="8" COLOR="#616161">无线ADB 6步 / USB ADB<BR/>无跳过选项</FONT>>,
+                fillcolor="#FCE4EC",
+                color="#E91E63"
+            ];
+            BATTERY [
+                label=<Phase 2: 电池优化<BR/><FONT POINT-SIZE="8" COLOR="#616161">关闭电池优化白名单<BR/>无跳过选项</FONT>>,
+                fillcolor="#FCE4EC",
+                color="#E91E63"
+            ];
+            BO_CHECK [
+                label="isBatteryExempt?",
+                shape=diamond,
+                fillcolor="#FCE4EC",
+                color="#E91E63",
+                width=2.0,
+                height=1.0
+            ];
+            BO_DONE [label="已关闭 → 继续", fillcolor="#FCE4EC", color="#E91E63"];
+            BO_NOT [
+                label=<未关闭<BR/><FONT POINT-SIZE="8" COLOR="#616161">系统对话框</FONT>>,
+                fillcolor="#FCE4EC",
+                color="#E91E63"
+            ];
+
+            DO1 -> DO_CHECK;
+            DO_CHECK -> DO_ALREADY [label="是"];
+            DO_CHECK -> DO_NOT [label="否"];
+            DO_NOT -> DO_CHECK [label="检查"];
+            DO_ALREADY -> BATTERY;
+            BATTERY -> BO_CHECK;
+            BO_CHECK -> BO_DONE [label="是"];
+            BO_CHECK -> BO_NOT [label="否"];
+            BO_NOT -> BO_CHECK [label="检查"];
+        }
+    }
+
+    // ==================== 配对流程 ====================
+    subgraph cluster_pairing {
+        label="配对流程";
+        style="rounded";
+        color="#CE93D8";
+        bgcolor="#FCF5FF";
+        fontsize=13;
+        fontcolor="#7B1FA2";
+
+        // 被控端配对
+        subgraph cluster_paired {
+            label="被控端";
+            style="rounded,dashed";
+            color="#BA68C8";
+            fontsize=10;
+
+            P1_SHOW [
+                label=<配对页 SHOW_MY_QR<BR/><FONT POINT-SIZE="8" COLOR="#616161">展示配对请求QR<BR/>[复制配对数据] / [扫描响应码]</FONT>>,
+                fillcolor="#F3E5F5",
+                color="#8E24AA"
+            ];
+            P1_SCAN [
+                label=<配对页 SCAN_PEER_QR<BR/><FONT POINT-SIZE="8" COLOR="#616161">扫描管控端响应码<BR/>[粘贴响应数据]</FONT>>,
+                fillcolor="#F3E5F5",
+                color="#8E24AA"
+            ];
+        }
+
+        // 管控端配对
+        subgraph cluster_pctrl {
+            label="管控端";
+            style="rounded,dashed";
+            color="#BA68C8";
+            fontsize=10;
+
+            P2_SHOW [
+                label=<配对页 SHOW_MY_QR<BR/><FONT POINT-SIZE="8" COLOR="#616161">扫描被控端QR<BR/>[粘贴配对数据]</FONT>>,
+                fillcolor="#F3E5F5",
+                color="#8E24AA"
+            ];
+        }
+
+        // 配对确认页
+        CONFIRM [
+            label=<配对确认页<BR/><FONT POINT-SIZE="8" COLOR="#616161">设备名 / 身份指纹 / 会话ID<BR/>[确认配对] 5s冷却灰色不可点<BR/>[取消配对]</FONT>>,
+            fillcolor="#E8F5E9",
+            color="#388E3C"
+        ];
+
+        // 回执生成
+        P2_RESP [
+            label=<回执生成页<BR/><FONT POINT-SIZE="8" COLOR="#616161">3个TOTP种子 + 签名QR<BR/>完成后 → 设备选择页</FONT>>,
+            fillcolor="#F3E5F5",
+            color="#8E24AA"
+        ];
+    }
+
+    // ==================== 管控端页面 ====================
+    subgraph cluster_controller {
+        label="管控端页面";
+        style="rounded";
+        color="#66BB6A";
+        bgcolor="#F1F8F1";
+        fontsize=13;
+        fontcolor="#2E7D32";
+
+        DEV_SEL [
+            label=<设备选择页<BR/><FONT POINT-SIZE="8" COLOR="#616161">已配对设备列表 (ACTIVE / WAITING)<BR/>[添加新设备] / [设置图标]<BR/>长按设备卡片: 查看回执QR</FONT>>,
+            fillcolor="#C8E6C9",
+            color="#2E7D32"
+        ];
+
+        CH [
+            label=<管控端主页<BR/><FONT POINT-SIZE="8" COLOR="#616161">StatusCard: 已配对 设备名 策略巡检运行中<BR/>验证码: 管理码 / 解锁码 每秒刷新<BR/>策略列表<BR/>[审批请求] [使用统计] [解锁应用] [调整策略]</FONT>>,
+            fillcolor="#E8F5E9",
+            color="#2E7D32"
+        ];
+
+        // 审批请求
+        subgraph cluster_approval {
+            label="审批请求页";
+            style="rounded,dashed";
+            color="#81C784";
+            fontsize=10;
+
+            RA_IDLE [
+                label=<审批: IDLE<BR/><FONT POINT-SIZE="8" COLOR="#616161">扫描被控端请求QR<BR/>[粘贴请求数据]</FONT>>,
+                fillcolor="#C8E6C9",
+                color="#388E3C"
+            ];
+            RA_REVIEW [
+                label=<审批: REVIEWING<BR/><FONT POINT-SIZE="8" COLOR="#616161">请求详情 + 设备状态<BR/>调整参数 Slider 5-180分<BR/>[拒绝] / [批准]</FONT>>,
+                fillcolor="#C8E6C9",
+                color="#388E3C"
+            ];
+            RA_RESP [
+                label=<审批: SHOWING_RESPONSE<BR/><FONT POINT-SIZE="8" COLOR="#616161">响应QR + [复制]<BR/>[完成]</FONT>>,
+                fillcolor="#C8E6C9",
+                color="#388E3C"
+            ];
+
+            RA_IDLE -> RA_REVIEW [label="扫描/粘贴请求"];
+            RA_REVIEW -> RA_RESP [label="批准 或 拒绝"];
+            RA_RESP -> RA_IDLE [label="完成, 回IDLE"];
+        }
+
+        UA [
+            label=<解锁应用页<BR/><FONT POINT-SIZE="8" COLOR="#616161">多选受限应用 FilterChip<BR/>解锁时长 5分钟<BR/>[生成解锁指令] QR / 字符串</FONT>>,
+            fillcolor="#C8E6C9",
+            color="#2E7D32"
+        ];
+
+        // 调整策略
+        subgraph cluster_adjust {
+            label="调整策略页 (管控端)";
+            style="rounded,dashed";
+            color="#81C784";
+            fontsize=10;
+
+            CFP_APP [
+                label=<应用策略 Tab<BR/><FONT POINT-SIZE="8" COLOR="#616161">多选应用 FilterChip<BR/>调整时长/时段参数</FONT>>,
+                fillcolor="#C8E6C9",
+                color="#388E3C"
+            ];
+            CFP_CONFIG [
+                label=<配置参数 Tab<BR/><FONT POINT-SIZE="8" COLOR="#616161">默认解锁时长等 (后续版本)</FONT>>,
+                fillcolor="#C8E6C9",
+                color="#388E3C"
+            ];
+            CFP_MANAGE [
+                label=<管理码模式<BR/><FONT POINT-SIZE="8" COLOR="#616161">TotpInputField 6位<BR/>[保存修改]</FONT>>,
+                fillcolor="#C8E6C9",
+                color="#388E3C"
+            ];
+            CFP_REQUEST [
+                label=<申请模式<BR/><FONT POINT-SIZE="8" COLOR="#616161">[生成调整指令] QR<BR/>被控端扫描确认后执行</FONT>>,
+                fillcolor="#C8E6C9",
+                color="#388E3C"
+            ];
+
+            CFP_APP -> CFP_CONFIG [label="切换Tab", style=dashed, constraint=false];
+            CFP_MANAGE -> CFP_REQUEST [label="切换模式", style=dashed];
+        }
+
+        // 终止码
+        TERM [
+            label=<终止码页<BR/><FONT POINT-SIZE="8" COLOR="#616161">EmergencyScreen<BR/>5s警告后显示终止码<BR/>6位 TOTP DESTROY 种子 每30秒刷新</FONT>>,
+            fillcolor="#FFCDD2",
+            color="#E53935"
+        ];
+    }
+
+    // ==================== 被控端页面 ====================
+    subgraph cluster_controlled {
+        label="被控端页面";
+        style="rounded";
+        color="#FFA726";
+        bgcolor="#FFF8F0";
+        fontsize=13;
+        fontcolor="#E65100";
+
+        CDH [
+            label=<被控端主页<BR/><FONT POINT-SIZE="8" COLOR="#616161">StatusCard: 已配对 接受管控<BR/>受限应用列表<BR/>[使用统计] [接收指令] [管理策略]</FONT>>,
+            fillcolor="#FFF3E0",
+            color="#E65100"
+        ];
+
+        // 申请解锁
+        subgraph cluster_unlock_req {
+            label="申请解锁页";
+            style="rounded,dashed";
+            color="#FFB74D";
+            fontsize=10;
+
+            UR_QUICK [
+                label=<快速码模式<BR/><FONT POINT-SIZE="8" COLOR="#616161">多选应用 + 6位解锁码<BR/>[切换到申请模式]</FONT>>,
+                fillcolor="#FFE0B2",
+                color="#F57C00"
+            ];
+            UR_REQUEST [
+                label=<申请模式<BR/><FONT POINT-SIZE="8" COLOR="#616161">多选应用 + 请求时长<BR/>☐附带统计<BR/>[生成申请码] QR<BR/>[切换到快速码模式]</FONT>>,
+                fillcolor="#FFE0B2",
+                color="#F57C00"
+            ];
+
+            UR_QUICK -> UR_REQUEST [label="切换模式", style=dashed];
+        }
+
+        // 接收指令
+        subgraph cluster_receive {
+            label="接收指令页";
+            style="rounded,dashed";
+            color="#FFB74D";
+            fontsize=10;
+
+            RC_IDLE [
+                label=<接收指令: IDLE<BR/><FONT POINT-SIZE="8" COLOR="#616161">[扫描指令] / [粘贴指令数据]</FONT>>,
+                fillcolor="#FFE0B2",
+                color="#F57C00"
+            ];
+            RC_UNLOCK [
+                label=<解锁指令<BR/><FONT POINT-SIZE="8" COLOR="#616161">目标应用 + 时长<BR/>[确认执行] / [拒绝]</FONT>>,
+                fillcolor="#FFE0B2",
+                color="#F57C00"
+            ];
+            RC_ADJUST [
+                label=<调整 / 策略指令<BR/><FONT POINT-SIZE="8" COLOR="#616161">参数变更<BR/>[确认执行] / [拒绝]</FONT>>,
+                fillcolor="#FFE0B2",
+                color="#F57C00"
+            ];
+            RC_STATS [
+                label=<统计请求<BR/><FONT POINT-SIZE="8" COLOR="#616161">自动生成统计报告<BR/>展示 QR</FONT>>,
+                fillcolor="#FFE0B2",
+                color="#F57C00"
+            ];
+
+            RC_IDLE -> RC_UNLOCK [label="解锁指令"];
+            RC_IDLE -> RC_ADJUST [label="调整指令"];
+            RC_IDLE -> RC_STATS [label="统计请求"];
+        }
+
+        // 被控端策略管理
+        subgraph cluster_ctrl_policy {
+            label="策略管理页 (被控端)";
+            style="rounded,dashed";
+            color="#FFB74D";
+            fontsize=10;
+
+            CP_APP [
+                label=<应用策略 Tab<BR/><FONT POINT-SIZE="8" COLOR="#616161">当前策略列表<BR/>多选 FilterChip</FONT>>,
+                fillcolor="#FFF3E0",
+                color="#E65100"
+            ];
+            CP_CONFIG [
+                label=<配置参数 Tab<BR/><FONT POINT-SIZE="8" COLOR="#616161">默认解锁时长等 (后续版本)</FONT>>,
+                fillcolor="#FFF3E0",
+                color="#E65100"
+            ];
+            CP_MANAGE [
+                label=<管理码模式<BR/><FONT POINT-SIZE="8" COLOR="#616161">TotpInputField 6位<BR/>[保存修改]</FONT>>,
+                fillcolor="#FFF3E0",
+                color="#E65100"
+            ];
+            CP_REQUEST [
+                label=<申请模式<BR/><FONT POINT-SIZE="8" COLOR="#616161">[生成配置变更请求] QR<BR/>发给管控方审批</FONT>>,
+                fillcolor="#FFF3E0",
+                color="#E65100"
+            ];
+
+            CP_APP -> CP_CONFIG [label="切换Tab", style=dashed, constraint=false];
+            CP_MANAGE -> CP_REQUEST [label="切换模式", style=dashed];
+        }
+
+        // 申请解除
+        subgraph cluster_unbind {
+            label="申请解除 (被控端)";
+            style="rounded,dashed";
+            color="#EF5350";
+            fontsize=10;
+
+            CU_WARN [
+                label=<警告页<BR/><FONT POINT-SIZE="8" COLOR="#616161">解除配对关系<BR/>加密材料将被清除<BR/>DO 权限保留<BR/>[确认] 5s冷却</FONT>>,
+                fillcolor="#FFCDD2",
+                color="#E53935"
+            ];
+            CU_INPUT [
+                label=<输入终止码<BR/><FONT POINT-SIZE="8" COLOR="#616161">管控方提供 6位终止码<BR/>TotpInputField<BR/>验证通过 → 执行解绑</FONT>>,
+                fillcolor="#FFCDD2",
+                color="#E53935"
+            ];
+            CU_L2 [
+                label=<L2 高级解除<BR/><FONT POINT-SIZE="8" COLOR="#616161">版本号连点7次解锁<BR/>5分钟窗口期自动恢复<BR/>需 ADB 命令</FONT>>,
+                fillcolor="#FFCDD2",
+                color="#E53935",
+                style="filled,rounded,dashed"
+            ];
+
+            CU_WARN -> CU_INPUT [label="5s确认后"];
+            CU_WARN -> CU_L2 [label="连点7次展开", style=dashed];
+        }
+    }
+
+    // ==================== 共用页面 ====================
+    subgraph cluster_shared {
+        label="共用页面";
+        style="rounded";
+        color="#7E57C2";
+        bgcolor="#F8F5FC";
+        fontsize=13;
+        fontcolor="#5E35B1";
+
+        ST [
+            label=<使用统计页<BR/><FONT POINT-SIZE="8" COLOR="#616161">[今天] [本周] [本月] FilterChip<BR/>小时柱状图 / 日折线图<BR/>应用明细<BR/>管控端: [请求统计] / 被控端: [发送统计]</FONT>>,
+            fillcolor="#E3F2FD",
+            color="#1565C0"
+        ];
+
+        SET [
+            label=<设置页<BR/><FONT POINT-SIZE="8" COLOR="#616161">DO状态(可点击) / 电池优化(可点击)<BR/>[配对信息] 主题模式 语言<BR/>[切换角色] [身份重置] 红色 10s确认<BR/>版本号连点7次 → L2</FONT>>,
+            fillcolor="#EDE7F6",
+            color="#5E35B1"
+        ];
+
+        PAIR_INFO [
+            label=<配对信息页 (FLAG_SECURE)<BR/><FONT POINT-SIZE="8" COLOR="#616161">设备名 / 身份指纹 / 会话ID / 状态<BR/>管控端: [查看验证码] [申请删除种子] [显示终止码]<BR/>被控端: [申请解除]<BR/>历史配对记录</FONT>>,
+            fillcolor="#EDE7F6",
+            color="#5E35B1"
+        ];
+
+        REVOKE_DO [
+            label=<取消 Device Owner<BR/><FONT POINT-SIZE="8" COLOR="#616161">⚠ 取消后应用限制功能失效<BR/>[确认取消] 红色 10s冷却</FONT>>,
+            fillcolor="#FFCDD2",
+            color="#E53935"
+        ];
+    }
+
+    // =====================================================================
+    //  连线 — 启动路由 (加粗, 角色色彩)
+    // =====================================================================
+    ROUTE_CHECK -> DEV_SEL [
+        label="isPaired\n+ controller",
+        color="#2E7D32",
+        fontcolor="#2E7D32",
+        penwidth=2.5
+    ];
+    ROUTE_CHECK -> CDH [
+        label="isPaired\n+ controlled",
+        color="#E65100",
+        fontcolor="#E65100",
+        penwidth=2.5
+    ];
+    ROUTE_CHECK -> RS [
+        label="未配对",
+        color="#1565C0",
+        fontcolor="#1565C0",
+        penwidth=2.5
+    ];
+
+    // =====================================================================
+    //  连线 — 角色选择
+    // =====================================================================
+    RS -> P2_SHOW [label="我要管控对方", color="#7B1FA2", fontcolor="#7B1FA2"];
+    RS -> DO1 [label="我需要被管控", color="#C2185B", fontcolor="#C2185B"];
+    RS -> SET [label="设置图标", color="#5E35B1"];
+    RS -> ALREADY [label="已绑定时", color="#E53935", fontcolor="#E53935"];
+    ALREADY -> PAIR_INFO [label="去解除配对"];
+    ALREADY -> RS [label="返回"];
+
+    // DO 设置 → 配对
+    BO_DONE -> P1_SHOW [label="进入配对", color="#8E24AA"];
+
+    // 被控端配对内部
+    P1_SHOW -> P1_SCAN [label="扫描/粘贴响应码"];
+    P1_SCAN -> CONFIRM [label="回执验证通过"];
+
+    // =====================================================================
+    //  连线 — 配对确认
+    // =====================================================================
+    CONFIRM -> CDH [
+        label="被控端确认\npopUpTo(0)",
+        color="#E65100",
+        fontcolor="#E65100",
+        penwidth=2
+    ];
+    CONFIRM -> P2_RESP [
+        label="管控端确认",
+        color="#2E7D32",
+        fontcolor="#2E7D32",
+        penwidth=2
+    ];
+    CONFIRM -> RS [label="取消\npopUpTo(0)", color="#9E9E9E"];
+    P2_RESP -> DEV_SEL [
+        label="完成\npopUpTo(0)",
+        color="#2E7D32",
+        fontcolor="#2E7D32",
+        penwidth=2
+    ];
+
+    // =====================================================================
+    //  连线 — 管控端内部
+    // =====================================================================
+    DEV_SEL -> CH [label="点击设备卡片", color="#2E7D32", penwidth=1.8];
+    DEV_SEL -> P2_SHOW [label="添加新设备", color="#7B1FA2"];
+    DEV_SEL -> SET [label="设置图标", color="#5E35B1"];
+
+    CH -> RA_IDLE [label="审批请求", color="#2E7D32"];
+    CH -> ST [label="使用统计", color="#2E7D32"];
+    CH -> UA [label="解锁应用", color="#2E7D32"];
+    CH -> CFP_APP [label="调整策略", color="#2E7D32"];
+    CH -> SET [label="设置图标", color="#5E35B1"];
+
+    // =====================================================================
+    //  连线 — 被控端内部
+    // =====================================================================
+    CDH -> UR_QUICK [label="点击应用卡片", color="#E65100", penwidth=1.8];
+    CDH -> ST [label="使用统计", color="#E65100"];
+    CDH -> RC_IDLE [label="接收指令", color="#E65100"];
+    CDH -> CP_APP [label="管理策略", color="#E65100"];
+    CDH -> SET [label="设置图标", color="#5E35B1"];
+
+    RC_UNLOCK -> CDH [label="确认/拒绝后返回", color="#E65100"];
+    RC_ADJUST -> CDH [label="确认/拒绝后返回", color="#E65100"];
+    RC_STATS -> CDH [label="生成报告后返回", color="#E65100"];
+
+    // =====================================================================
+    //  连线 — 共用页面
+    // =====================================================================
+    ST -> CH [label="管控端返回", style=dashed, color="#2E7D32"];
+    ST -> CDH [label="被控端返回", style=dashed, color="#E65100"];
+
+    SET -> RS [label="切换角色\npopUpTo(0)", color="#5E35B1", fontcolor="#5E35B1"];
+    SET -> REVOKE_DO [label="取消DO\n仅已设置时", color="#E53935"];
+    SET -> PAIR_INFO [label="配对信息", color="#5E35B1"];
+    SET -> DO1 [label="DO未设置时\n→ 应用内引导", color="#C2185B"];
+    SET -> BATTERY [label="电池未关闭时\n→ 引导对话框", color="#C2185B"];
+
+    REVOKE_DO -> SET [label="撤销后返回"];
+
+    PAIR_INFO -> TERM [label="管控端:\n显示终止码", color="#E53935"];
+    PAIR_INFO -> CU_WARN [label="被控端:\n申请解除", color="#E53935"];
+    PAIR_INFO -> SET [label="返回"];
+
+    // 申请解除内部
+    CU_INPUT -> CDH [
+        label="验证通过\npopUpTo(0)",
+        color="#E65100",
+        fontcolor="#E65100",
+        penwidth=2
+    ];
+    CU_L2 -> CDH [label="ADB执行后", style=dashed, color="#9E9E9E"];
+
+    // =====================================================================
+    //  图例
+    // =====================================================================
+    subgraph cluster_legend {
+        label="图例";
+        style="rounded";
+        color="#BDBDBD";
+        bgcolor="#FAFAFA";
+        fontsize=13;
+
+        legend_node [shape=none, label=<
+            <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="6" CELLPADDING="4">
+                <TR>
+                    <TD COLSPAN="4" ALIGN="LEFT"><B>节点形状</B></TD>
+                </TR>
+                <TR>
+                    <TD BORDER="1" STYLE="ROUNDED" BGCOLOR="#E8F5E9" WIDTH="60" HEIGHT="30"> </TD>
+                    <TD ALIGN="LEFT">圆角矩形 = 页面/步骤</TD>
+                    <TD BORDER="1" STYLE="" BGCOLOR="#E3F2FD" WIDTH="60" HEIGHT="30">◇</TD>
+                    <TD ALIGN="LEFT">菱形 = 判断/路由</TD>
+                </TR>
+                <TR>
+                    <TD BORDER="1" STYLE="" BGCOLOR="#1565C0" WIDTH="30" HEIGHT="30"><FONT COLOR="WHITE">●</FONT></TD>
+                    <TD ALIGN="LEFT">双圆 = 入口</TD>
+                    <TD BORDER="1" STYLE="DASHED,ROUNDED" BGCOLOR="#FFCDD2" WIDTH="60" HEIGHT="30"> </TD>
+                    <TD ALIGN="LEFT">虚线框 = 设计预留</TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="4" ALIGN="LEFT"><B>颜色分组</B></TD>
+                </TR>
+                <TR>
+                    <TD BGCOLOR="#E3F2FD" BORDER="1"> </TD><TD ALIGN="LEFT">初始化流程</TD>
+                    <TD BGCOLOR="#F3E5F5" BORDER="1"> </TD><TD ALIGN="LEFT">配对流程</TD>
+                </TR>
+                <TR>
+                    <TD BGCOLOR="#C8E6C9" BORDER="1"> </TD><TD ALIGN="LEFT">管控端页面</TD>
+                    <TD BGCOLOR="#FFF3E0" BORDER="1"> </TD><TD ALIGN="LEFT">被控端页面</TD>
+                </TR>
+                <TR>
+                    <TD BGCOLOR="#EDE7F6" BORDER="1"> </TD><TD ALIGN="LEFT">共用页面</TD>
+                    <TD BGCOLOR="#FFCDD2" BORDER="1"> </TD><TD ALIGN="LEFT">危险操作</TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="4" ALIGN="LEFT"><B>连线样式</B></TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2" ALIGN="LEFT"><FONT COLOR="#2E7D32">━━</FONT> 管控端流转</TD>
+                    <TD COLSPAN="2" ALIGN="LEFT"><FONT COLOR="#E65100">━━</FONT> 被控端流转</TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2" ALIGN="LEFT"><FONT COLOR="#5E35B1">━━</FONT> 共用/设置</TD>
+                    <TD COLSPAN="2" ALIGN="LEFT"><FONT COLOR="#9E9E9E">╌╌</FONT> 设计预留/返回</TD>
+                </TR>
+            </TABLE>
+        >];
+    }
+}
