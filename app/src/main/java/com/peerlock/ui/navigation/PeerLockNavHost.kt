@@ -52,6 +52,7 @@ object Routes {
     const val TERMINATE_CODE = "terminate_code"
     const val APPLY_UNBIND = "apply_unbind"
     const val ALREADY_BOUND = "already_bound"
+    const val DEVICE_OWNER_SETUP_SETTINGS = "device_owner_setup_settings"
 
     fun pairing(role: String) = "pairing/$role"
     fun pairingConfirm(role: String) = "pairing_confirm/$role"
@@ -94,6 +95,14 @@ fun PeerLockNavHost(
         composable(Routes.ALREADY_BOUND) {
             AlreadyBoundScreen(
                 onNavigateToPairingInfo = { navController.navigate(Routes.PAIRING_INFO) },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Routes.DEVICE_OWNER_SETUP_SETTINGS) {
+            DeviceOwnerSetupScreen(
+                onContinue = { navController.popBackStack() },
+                onSkip = { navController.popBackStack() },
                 onBack = { navController.popBackStack() },
             )
         }
@@ -237,6 +246,9 @@ fun PeerLockNavHost(
                     navController.navigate(Routes.ROLE_SELECTION) {
                         popUpTo(0) { inclusive = true }
                     }
+                },
+                onNavigateToDeviceOwnerSetup = {
+                    navController.navigate(Routes.DEVICE_OWNER_SETUP_SETTINGS)
                 },
             )
         }

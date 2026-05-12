@@ -42,6 +42,7 @@ fun SettingsScreen(
     onNavigateToPairingInfo: () -> Unit = {},
     onNavigateToRevokeDo: () -> Unit = {},
     onNavigateToRoleSelection: () -> Unit = {},
+    onNavigateToDeviceOwnerSetup: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -112,9 +113,7 @@ fun SettingsScreen(
                 label = "Device Owner",
                 value = if (uiState.isDeviceOwner) "✓ 已设置" else "✗ 未设置",
                 enabled = true,
-                onClick = {
-                    context.startActivity(Intent("android.settings.MANAGE_DEVICE_ADMINS"))
-                },
+                onClick = onNavigateToDeviceOwnerSetup,
             )
 
             // 电池优化
