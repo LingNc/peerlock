@@ -18,6 +18,7 @@ import com.peerlock.ui.controller.DeviceSelectScreen
 import com.peerlock.ui.controller.RequestApprovalScreen
 import com.peerlock.ui.controller.UnlockAppScreen
 import com.peerlock.ui.onboarding.DeviceOwnerSetupScreen
+import com.peerlock.ui.onboarding.PairingConfirmScreen
 import com.peerlock.ui.onboarding.PairingScreen
 import com.peerlock.ui.onboarding.RoleSelectionScreen
 import com.peerlock.ui.stats.StatsScreen
@@ -107,13 +108,32 @@ fun PeerLockNavHost(
             PairingScreen(
                 role = role,
                 onPairingComplete = {
-                    val destination = if (role == "controller") Routes.CONTROLLER_HOME
+                    navController.navigate(Routes.pairingConfirm(role)) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(
+            Routes.PAIRING_CONFIRM,
+            arguments = listOf(navArgument("role") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val role = backStackEntry.arguments?.getString("role") ?: "controlled"
+            PairingConfirmScreen(
+                onConfirmed = {
+                    val destination = if (role == "controller") Routes.DEVICE_SELECTION
                     else Routes.CONTROLLED_HOME
                     navController.navigate(destination) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
-                onBack = { navController.popBackStack() },
+                onCancel = {
+                    navController.navigate(Routes.ROLE_SELECTION) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
             )
         }
 
