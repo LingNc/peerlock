@@ -56,12 +56,14 @@ object AppModule {
     fun provideSeedManager(
         keystoreManager: KeystoreManager,
         securePrefs: SecurePrefs,
-    ): SeedManager = SeedManagerImpl(keystoreManager, securePrefs)
+        pairingSessionDao: com.peerlock.data.db.dao.PairingSessionDao,
+    ): SeedManager = SeedManagerImpl(keystoreManager, securePrefs, pairingSessionDao)
 
     @Provides @Singleton
     fun providePairingRepository(
         securePrefs: SecurePrefs,
-    ): PairingRepository = PairingRepositoryImpl(securePrefs)
+        pairingSessionDao: com.peerlock.data.db.dao.PairingSessionDao,
+    ): PairingRepository = PairingRepositoryImpl(securePrefs, pairingSessionDao)
 
     @Provides @Singleton
     fun providePairingProtocol(

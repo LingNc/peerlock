@@ -41,6 +41,7 @@ object DatabaseModule {
             "peerlock.db"
         )
             .openHelperFactory(factory)
+            .addMigrations(MIGRATION_1_2)
             .build()
     }
 
@@ -49,6 +50,7 @@ object DatabaseModule {
     @Provides fun provideDailySummaryDao(db: PeerLockDatabase) = db.dailySummaryDao()
     @Provides fun provideRestrictionPolicyDao(db: PeerLockDatabase) = db.restrictionPolicyDao()
     @Provides fun provideAuditLogDao(db: PeerLockDatabase) = db.auditLogDao()
+    @Provides fun providePairingSessionDao(db: PeerLockDatabase) = db.pairingSessionDao()
 
     @Provides
     @Singleton

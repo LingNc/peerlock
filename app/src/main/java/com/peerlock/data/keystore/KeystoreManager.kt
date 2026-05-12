@@ -100,6 +100,16 @@ class KeystoreManager {
         return decrypt(encryptedSeed, key)
     }
 
+    fun encryptSeedForSession(sessionId: String, seed: ByteArray): ByteArray {
+        val key = generateAesKey(KeyAlias.totpSeedForSession(sessionId))
+        return encrypt(seed, key)
+    }
+
+    fun decryptSeedForSession(sessionId: String, encryptedSeed: ByteArray): ByteArray {
+        val key = generateAesKey(KeyAlias.totpSeedForSession(sessionId))
+        return decrypt(encryptedSeed, key)
+    }
+
     fun generateDbPassphrase(): ByteArray {
         val key = generateAesKey(KeyAlias.DB_PASSPHRASE_KEY)
         val knownValue = "peerlock_db_v1".toByteArray()
@@ -114,5 +124,10 @@ class KeystoreManager {
         if (keyStore.containsAlias(alias)) {
             keyStore.deleteEntry(alias)
         }
+    }
+
+    fun deleteSessionKeys(sessionId: String) {
+        val seedAlias = KeyAlias.totpSeedForSession(sessionId)
+        deleteKey(seedAlias)
     }
 }

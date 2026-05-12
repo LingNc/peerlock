@@ -1,5 +1,6 @@
 package com.peerlock.data.seed
 
+import com.peerlock.data.db.dao.PairingSessionDao
 import com.peerlock.data.keystore.KeystoreManager
 import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.domain.totp.KeyType
@@ -13,12 +14,16 @@ class SeedManagerImplTest {
     private lateinit var seedManager: SeedManagerImpl
     private lateinit var mockKeystore: KeystoreManager
     private lateinit var mockPrefs: SecurePrefs
+    private lateinit var mockSessionDao: PairingSessionDao
 
     @BeforeEach
     fun setup() {
         mockKeystore = mockk()
         mockPrefs = mockk(relaxed = true)
-        seedManager = SeedManagerImpl(mockKeystore, mockPrefs)
+        mockSessionDao = mockk(relaxed = true)
+        // 默认无活跃会话，走 SecurePrefs 回退路径
+        coEvery { mockSessionDao.getActiveSession() } returns null
+        seedManager = SeedManagerImpl(mockKeystore, mockPrefs, mockSessionDao)
     }
 
     @Test
