@@ -11,13 +11,17 @@ import com.peerlock.data.db.dao.PairingSessionDao
 import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.ui.common.PlaceholderScreen
 import com.peerlock.ui.controlled.ControlledHomeScreen
+import com.peerlock.ui.controlled.ReceiveCommandScreen
 import com.peerlock.ui.controlled.UnlockRequestScreen
 import com.peerlock.ui.controller.ControllerHomeScreen
+import com.peerlock.ui.controller.DeviceSelectScreen
 import com.peerlock.ui.controller.RequestApprovalScreen
+import com.peerlock.ui.controller.UnlockAppScreen
 import com.peerlock.ui.onboarding.DeviceOwnerSetupScreen
 import com.peerlock.ui.onboarding.PairingScreen
 import com.peerlock.ui.onboarding.RoleSelectionScreen
 import com.peerlock.ui.stats.StatsScreen
+import com.peerlock.ui.settings.RevokeDoScreen
 import com.peerlock.ui.settings.SettingsScreen
 
 object Routes {
@@ -116,7 +120,11 @@ fun PeerLockNavHost(
         // === 管控端 ===
 
         composable(Routes.DEVICE_SELECTION) {
-            PlaceholderScreen(title = "设备选择", onBack = { navController.popBackStack() })
+            DeviceSelectScreen(
+                onNavigateToDevice = { navController.navigate(Routes.CONTROLLER_HOME) },
+                onNavigateToAddDevice = { navController.navigate(Routes.pairing("controller")) },
+                onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
+            )
         }
 
         composable(Routes.CONTROLLER_HOME) {
@@ -133,7 +141,7 @@ fun PeerLockNavHost(
         }
 
         composable(Routes.UNLOCK_APP) {
-            PlaceholderScreen(title = "解锁应用", onBack = { navController.popBackStack() })
+            UnlockAppScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.ADJUST_POLICY) {
@@ -161,7 +169,7 @@ fun PeerLockNavHost(
         }
 
         composable(Routes.RECEIVE_COMMAND) {
-            PlaceholderScreen(title = "接收指令", onBack = { navController.popBackStack() })
+            ReceiveCommandScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.STRATEGY_MANAGEMENT) {
@@ -196,7 +204,14 @@ fun PeerLockNavHost(
         }
 
         composable(Routes.REVOKE_DO) {
-            PlaceholderScreen(title = "取消 Device Owner", onBack = { navController.popBackStack() })
+            RevokeDoScreen(
+                onBack = { navController.popBackStack() },
+                onRevoked = {
+                    navController.navigate(Routes.SETTINGS) {
+                        popUpTo(Routes.SETTINGS) { inclusive = true }
+                    }
+                },
+            )
         }
     }
 }
