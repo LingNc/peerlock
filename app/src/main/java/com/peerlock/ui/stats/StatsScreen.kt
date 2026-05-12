@@ -16,7 +16,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -45,6 +48,8 @@ import com.peerlock.domain.repository.HourlySummary
 @Composable
 fun StatsScreen(
     onBack: () -> Unit,
+    onRequestStats: () -> Unit = {},
+    onSendStats: () -> Unit = {},
     viewModel: StatsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -56,6 +61,17 @@ fun StatsScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    if (uiState.role == "controller") {
+                        IconButton(onClick = onRequestStats) {
+                            Icon(Icons.Default.Refresh, contentDescription = "请求统计")
+                        }
+                    } else {
+                        IconButton(onClick = onSendStats) {
+                            Icon(Icons.Default.Share, contentDescription = "发送统计")
+                        }
                     }
                 },
             )

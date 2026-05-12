@@ -2,6 +2,7 @@ package com.peerlock.ui.stats
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.domain.repository.DailySummary
 import com.peerlock.domain.repository.HourlySummary
 import com.peerlock.domain.repository.StorageRepository
@@ -25,11 +26,13 @@ data class StatsUiState(
     val selectedHour: Int? = null,
     val selectedDate: String? = null,
     val isLoading: Boolean = true,
+    val role: String = "",
 )
 
 @HiltViewModel
 class StatsViewModel @Inject constructor(
     private val storageRepository: StorageRepository,
+    private val securePrefs: SecurePrefs,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(StatsUiState())
@@ -39,6 +42,7 @@ class StatsViewModel @Inject constructor(
 
     init {
         loadToday()
+        _uiState.value = _uiState.value.copy(role = securePrefs.role ?: "")
     }
 
     fun selectTab(tab: StatsTab) {
