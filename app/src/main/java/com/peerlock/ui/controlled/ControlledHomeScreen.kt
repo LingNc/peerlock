@@ -38,6 +38,8 @@ fun ControlledHomeScreen(
     onRequestUnlock: (String?) -> Unit = {},
     onNavigateToStats: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
+    onNavigateToReceiveCommand: () -> Unit = {},
+    onNavigateToStrategyManagement: () -> Unit = {},
     viewModel: ControlledViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -84,6 +86,24 @@ fun ControlledHomeScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("使用统计")
+                }
+            }
+
+            item {
+                OutlinedButton(
+                    onClick = onNavigateToReceiveCommand,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("接收指令")
+                }
+            }
+
+            item {
+                OutlinedButton(
+                    onClick = onNavigateToStrategyManagement,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("管理策略")
                 }
             }
 

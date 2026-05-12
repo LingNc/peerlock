@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.navigation.compose.rememberNavController
+import com.peerlock.data.db.dao.PairingSessionDao
 import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.ui.navigation.PeerLockNavHost
 import com.peerlock.ui.theme.PeerLockTheme
@@ -14,6 +15,7 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var securePrefs: SecurePrefs
+    @Inject lateinit var pairingSessionDao: PairingSessionDao
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,6 +25,7 @@ class MainActivity : ComponentActivity() {
                 PeerLockNavHost(
                     navController = navController,
                     securePrefs = securePrefs,
+                    pairingSessionDao = pairingSessionDao,
                 )
             }
         }

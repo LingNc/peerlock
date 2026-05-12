@@ -44,7 +44,6 @@ import com.peerlock.ui.common.StatusCard
 fun ControllerHomeScreen(
     onNavigateToUnlockRequest: () -> Unit = {},
     onNavigateToApproval: () -> Unit = {},
-    onNavigateToEmergency: () -> Unit = {},
     onNavigateToStats: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     viewModel: ControllerViewModel = hiltViewModel(),
@@ -54,7 +53,7 @@ fun ControllerHomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("PeerLock 控制端") },
+                title = { Text("PeerLock 管控端") },
                 actions = {
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")
@@ -90,10 +89,10 @@ fun ControllerHomeScreen(
 
             item {
                 OutlinedButton(
-                    onClick = onNavigateToEmergency,
+                    onClick = onNavigateToUnlockRequest,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("紧急逃生")
+                    Text("解锁应用")
                 }
             }
 
