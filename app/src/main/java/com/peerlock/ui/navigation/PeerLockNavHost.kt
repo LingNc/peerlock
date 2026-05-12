@@ -9,7 +9,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.peerlock.data.db.dao.PairingSessionDao
 import com.peerlock.data.prefs.SecurePrefs
-import com.peerlock.ui.common.PlaceholderScreen
 import com.peerlock.ui.controlled.ControlledHomeScreen
 import com.peerlock.ui.controlled.ReceiveCommandScreen
 import com.peerlock.ui.controlled.StrategyManagementScreen
@@ -24,6 +23,7 @@ import com.peerlock.ui.onboarding.PairingConfirmScreen
 import com.peerlock.ui.onboarding.PairingScreen
 import com.peerlock.ui.onboarding.RoleSelectionScreen
 import com.peerlock.ui.stats.StatsScreen
+import com.peerlock.ui.settings.ApplyUnbindScreen
 import com.peerlock.ui.settings.PairingInfoScreen
 import com.peerlock.ui.settings.RevokeDoScreen
 import com.peerlock.ui.settings.SettingsScreen
@@ -201,7 +201,14 @@ fun PeerLockNavHost(
         }
 
         composable(Routes.APPLY_UNBIND) {
-            PlaceholderScreen(title = "申请解除", onBack = { navController.popBackStack() })
+            ApplyUnbindScreen(
+                onBack = { navController.popBackStack() },
+                onUnbound = {
+                    navController.navigate(Routes.ROLE_SELECTION) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+            )
         }
 
         // === 共用页面 ===
