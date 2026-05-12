@@ -26,6 +26,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -33,6 +34,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.peerlock.ui.common.QrCodeDisplay
+import com.peerlock.ui.common.TotpInputField
 import com.peerlock.ui.settings.PolicyMode
 import com.peerlock.ui.settings.StrategyManagementViewModel
 import com.peerlock.ui.settings.StrategyTab
@@ -85,8 +88,10 @@ fun StrategyManagementScreen(
                         onSelectAll = { viewModel.selectAllPolicies() },
                         onUpdateLimit = { id, min -> viewModel.updateDailyLimit(id, min) },
                         onSwitchMode = { viewModel.switchMode(it) },
-                        onSave = { viewModel.saveChanges() },
+                        onSave = { viewModel.requestSave() },
                         onGenerateRequest = { viewModel.generateChangeRequest() },
+                        onVerifyCode = { viewModel.verifyManagementCode(it) },
+                        onCancelCodeInput = { viewModel.cancelCodeInput() },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -109,6 +114,8 @@ private fun AppPolicyTab(
     onSwitchMode: (PolicyMode) -> Unit,
     onSave: () -> Unit,
     onGenerateRequest: () -> Unit,
+    onVerifyCode: (String) -> Unit,
+    onCancelCodeInput: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -124,7 +131,7 @@ private fun AppPolicyTab(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text("选择目标应用", style = MaterialTheme.typography.titleMedium)
-                androidx.compose.material3.TextButton(onClick = onSelectAll) {
+                TextButton(onClick = onSelectAll) {
                     Text("全选")
                 }
             }
@@ -181,9 +188,50 @@ private fun AppPolicyTab(
             }
         }
 
+        // 管理码输入区域
+        if (state.showCodeInput) {
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("输入管理码", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "请输入 6 位管理码以确认保存",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        TotpInputField(onCodeComplete = onVerifyCode)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextButton(onClick = onCancelCodeInput) {
+                            Text("取消")
+                        }
+                    }
+                }
+            }
+        }
+
+        // 生成的 QR 显示
+        if (state.generatedQr != null) {
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("请让被控端扫描此调整指令", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        QrCodeDisplay(
+                            content = state.generatedQr,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
+                        )
+                    }
+                }
+            }
+        }
+
         item {
             Spacer(modifier = Modifier.height(8.dp))
-            if (state.mode == PolicyMode.MANAGEMENT_CODE) {
+            if (state.mode == PolicyMode.MANAGEMENT_CODE && state.showCodeInput.not()) {
                 Button(
                     onClick = onSave,
                     modifier = Modifier.fillMaxWidth(),
@@ -191,11 +239,11 @@ private fun AppPolicyTab(
                 ) {
                     Text("保存修改")
                 }
-            } else {
+            } else if (state.mode == PolicyMode.REQUEST) {
                 Button(
                     onClick = onGenerateRequest,
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = state.isDirty,
+                    enabled = state.isDirty && state.generatedQr == null,
                 ) {
                     Text("生成调整指令")
                 }

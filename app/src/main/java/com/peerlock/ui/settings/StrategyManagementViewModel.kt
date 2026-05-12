@@ -3,9 +3,14 @@ package com.peerlock.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.peerlock.data.prefs.SecurePrefs
+import com.peerlock.data.seed.SeedManager
 import com.peerlock.domain.policy.PolicyEngine
 import com.peerlock.domain.policy.RestrictionPolicy
 import com.peerlock.domain.repository.StorageRepository
+import com.peerlock.domain.request.DeviceInfo
+import com.peerlock.domain.request.RequestProtocol
+import com.peerlock.domain.totp.KeyType
+import com.peerlock.domain.totp.TotpEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +28,7 @@ data class PolicyTabState(
     val isDirty: Boolean = false,
     val generatedQr: String? = null,
     val error: String? = null,
+    val showCodeInput: Boolean = false,
 )
 
 data class PolicyChange(
@@ -47,6 +53,9 @@ class StrategyManagementViewModel @Inject constructor(
     private val storageRepository: StorageRepository,
     private val policyEngine: PolicyEngine,
     private val securePrefs: SecurePrefs,
+    private val seedManager: SeedManager,
+    private val totpEngine: TotpEngine,
+    private val requestProtocol: RequestProtocol,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(StrategyUiState())
@@ -101,32 +110,102 @@ class StrategyManagementViewModel @Inject constructor(
         )
     }
 
-    fun saveChanges() {
-        // TODO: 管理码模式 — 验证管理码后保存
-        val changes = _uiState.value.appPolicy.changes
+    fun requestSave() {
+        // 显示管理码输入
+        _uiState.value = _uiState.value.copy(
+            appPolicy = _uiState.value.appPolicy.copy(showCodeInput = true),
+        )
+    }
+
+    fun verifyManagementCode(code: String) {
         viewModelScope.launch {
-            for ((policyId, change) in changes) {
-                val policy = _uiState.value.appPolicy.policies.find { it.id == policyId } ?: continue
-                if (change.dailyLimitMinutes != null) {
-                    storageRepository.upsertPolicy(
-                        policy.copy(
-                            dailyLimitMinutes = change.dailyLimitMinutes,
-                            lastModified = System.currentTimeMillis(),
-                        )
-                    )
-                }
+            val seed = seedManager.retrieveSeed(KeyType.SETTING)
+            if (seed == null) {
+                _uiState.value = _uiState.value.copy(
+                    appPolicy = _uiState.value.appPolicy.copy(error = "密钥缺失，无法验证管理码"),
+                )
+                return@launch
             }
-            _uiState.value = _uiState.value.copy(
-                appPolicy = _uiState.value.appPolicy.copy(changes = emptyMap(), isDirty = false),
-            )
-            loadPolicies()
+            val valid = totpEngine.verifyCode(seed, code, tolerance = 1)
+            if (valid) {
+                saveChangesDirect()
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    appPolicy = _uiState.value.appPolicy.copy(error = "管理码错误"),
+                )
+            }
         }
     }
 
-    fun generateChangeRequest() {
-        // TODO: 申请模式 — 生成策略变更 QR/字符串
+    private suspend fun saveChangesDirect() {
+        val changes = _uiState.value.appPolicy.changes
+        for ((policyId, change) in changes) {
+            val policy = _uiState.value.appPolicy.policies.find { it.id == policyId } ?: continue
+            if (change.dailyLimitMinutes != null) {
+                storageRepository.upsertPolicy(
+                    policy.copy(
+                        dailyLimitMinutes = change.dailyLimitMinutes,
+                        lastModified = System.currentTimeMillis(),
+                    )
+                )
+            }
+        }
         _uiState.value = _uiState.value.copy(
-            appPolicy = _uiState.value.appPolicy.copy(error = "生成调整指令功能开发中"),
+            appPolicy = _uiState.value.appPolicy.copy(
+                changes = emptyMap(),
+                isDirty = false,
+                showCodeInput = false,
+            ),
+        )
+        loadPolicies()
+    }
+
+    fun generateChangeRequest() {
+        viewModelScope.launch {
+            val changes = _uiState.value.appPolicy.changes
+            val policyChanges = changes.map { (policyId, change) ->
+                val policy = _uiState.value.appPolicy.policies.find { it.id == policyId }
+                com.peerlock.domain.request.PolicyChange(
+                    targetPackage = policy?.targetPackage ?: "",
+                    dailyLimitMinutes = change.dailyLimitMinutes,
+                    allowedTimeStart = change.allowedTimeStart,
+                    allowedTimeEnd = change.allowedTimeEnd,
+                )
+            }
+            val sessionId = securePrefs.sessionId ?: run {
+                _uiState.value = _uiState.value.copy(
+                    appPolicy = _uiState.value.appPolicy.copy(error = "未找到会话 ID"),
+                )
+                return@launch
+            }
+            val qr = requestProtocol.generateConfigRequest(
+                sessionId = sessionId,
+                changes = policyChanges,
+                deviceInfo = DeviceInfo(
+                    todayScreenTimeMs = 0,
+                    suspendedApps = emptyList(),
+                    isInSafeMode = false,
+                ),
+            )
+            if (qr != null) {
+                _uiState.value = _uiState.value.copy(
+                    appPolicy = _uiState.value.appPolicy.copy(
+                        generatedQr = qr,
+                        changes = emptyMap(),
+                        isDirty = false,
+                    ),
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    appPolicy = _uiState.value.appPolicy.copy(error = "生成调整指令失败"),
+                )
+            }
+        }
+    }
+
+    fun cancelCodeInput() {
+        _uiState.value = _uiState.value.copy(
+            appPolicy = _uiState.value.appPolicy.copy(showCodeInput = false),
         )
     }
 
