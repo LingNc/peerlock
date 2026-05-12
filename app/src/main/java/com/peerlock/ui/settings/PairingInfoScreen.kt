@@ -29,9 +29,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -94,16 +97,47 @@ fun PairingInfoScreen(
             if (uiState.role == "controller") {
                 item {
                     OutlinedButton(
-                        onClick = { /* TODO: 查看验证码 */ },
+                        onClick = { viewModel.toggleShowCodes() },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("查看验证码")
+                        Text(if (uiState.showCodes) "隐藏验证码" else "查看验证码")
+                    }
+                }
+
+                if (uiState.showCodes) {
+                    items(uiState.totpCodes) { codeInfo ->
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column {
+                                    Text(text = codeInfo.label, style = MaterialTheme.typography.bodyMedium)
+                                    Text(
+                                        text = codeInfo.code,
+                                        style = MaterialTheme.typography.headlineMedium.copy(
+                                            fontFamily = FontFamily.Monospace,
+                                            letterSpacing = 4.sp,
+                                        ),
+                                    )
+                                }
+                                Text(
+                                    text = "${codeInfo.remainingSeconds}s",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = if (codeInfo.remainingSeconds <= 5) MaterialTheme.colorScheme.error
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
                     }
                 }
 
                 item {
                     TextButton(
-                        onClick = { /* TODO: 申请删除种子 */ },
+                        onClick = { viewModel.deleteSeedsForSession(uiState.sessionIdFull) },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text("申请删除种子")
@@ -167,7 +201,7 @@ fun PairingInfoScreen(
                                 Text(session.status, style = MaterialTheme.typography.bodySmall)
                             }
                             if (session.status == "REVOKED") {
-                                TextButton(onClick = { /* TODO: 申请删除种子 */ }) {
+                                TextButton(onClick = { viewModel.deleteSeedsForSession(session.sessionId) }) {
                                     Text("删除种子", style = MaterialTheme.typography.bodySmall)
                                 }
                             }
