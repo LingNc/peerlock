@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.peerlock.data.prefs.SecurePrefs
+import com.peerlock.data.seed.SeedManager
 import com.peerlock.system.deviceadmin.DeviceOwnerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -22,6 +23,10 @@ data class SettingsUiState(
     val isBatteryExempt: Boolean = false,
     val versionTapCount: Int = 0,
     val l2Unlocked: Boolean = false,
+    val showResetConfirm: Boolean = false,
+    val resetCooldownSeconds: Int = 10,
+    val isResetCooldownActive: Boolean = false,
+    val resetComplete: Boolean = false,
 )
 
 @HiltViewModel
@@ -29,6 +34,7 @@ class SettingsViewModel @Inject constructor(
     private val application: Application,
     private val securePrefs: SecurePrefs,
     private val deviceOwnerManager: DeviceOwnerManager,
+    private val seedManager: SeedManager,
 ) : ViewModel() {
 
     private val prefs = application.getSharedPreferences("peerlock_settings", 0)
@@ -64,5 +70,28 @@ class SettingsViewModel @Inject constructor(
         } else {
             _uiState.value = _uiState.value.copy(versionTapCount = count)
         }
+    }
+
+    fun requestIdentityReset() {
+        _uiState.value = _uiState.value.copy(showResetConfirm = true, isResetCooldownActive = true)
+        viewModelScope.launch {
+            for (i in 10 downTo 0) {
+                _uiState.value = _uiState.value.copy(resetCooldownSeconds = i, isResetCooldownActive = i > 0)
+                if (i > 0) delay(1000)
+            }
+        }
+    }
+
+    fun confirmIdentityReset() {
+        if (_uiState.value.isResetCooldownActive) return
+        viewModelScope.launch {
+            securePrefs.clearPairingData()
+            seedManager.clearSeeds()
+            _uiState.value = _uiState.value.copy(showResetConfirm = false, resetComplete = true)
+        }
+    }
+
+    fun cancelReset() {
+        _uiState.value = _uiState.value.copy(showResetConfirm = false, isResetCooldownActive = false)
     }
 }

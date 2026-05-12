@@ -1,5 +1,7 @@
 package com.peerlock.ui.settings
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,6 +13,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -22,9 +27,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 
@@ -38,6 +45,48 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(uiState.resetComplete) {
+        if (uiState.resetComplete) onNavigateToRoleSelection()
+    }
+
+    // 身份重置确认对话框
+    if (uiState.showResetConfirm) {
+        AlertDialog(
+            onDismissRequest = { viewModel.cancelReset() },
+            title = { Text("身份重置", color = MaterialTheme.colorScheme.error) },
+            text = {
+                Text(
+                    "身份重置将清除所有配对数据和加密材料：\n\n" +
+                        "· 配对关系\n" +
+                        "· TOTP 种子\n" +
+                        "· 策略数据\n\n" +
+                        "Device Owner 权限将保留。\n" +
+                        "此操作不可逆。"
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.confirmIdentityReset() },
+                    enabled = !uiState.isResetCooldownActive,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Text(
+                        if (uiState.isResetCooldownActive) "确认重置 (${uiState.resetCooldownSeconds}s)"
+                        else "确认重置"
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.cancelReset() }) {
+                    Text("取消")
+                }
+            },
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -62,16 +111,20 @@ fun SettingsScreen(
             SettingItem(
                 label = "Device Owner",
                 value = if (uiState.isDeviceOwner) "✓ 已设置" else "✗ 未设置",
-                enabled = !uiState.isDeviceOwner,
-                onClick = { /* TODO: 跳转 DO 设置 */ },
+                enabled = true,
+                onClick = {
+                    context.startActivity(Intent("android.settings.MANAGE_DEVICE_ADMINS"))
+                },
             )
 
             // 电池优化
             SettingItem(
                 label = "电池优化",
                 value = if (uiState.isBatteryExempt) "✓ 已关闭" else "✗ 未关闭",
-                enabled = !uiState.isBatteryExempt,
-                onClick = { /* TODO: 跳转电池优化 */ },
+                enabled = true,
+                onClick = {
+                    context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                },
             )
 
             HorizontalDivider()
@@ -148,7 +201,7 @@ fun SettingsScreen(
             }
 
             // 身份重置
-            TextButton(onClick = { /* TODO: 身份重置 10s 确认 */ }) {
+            TextButton(onClick = { viewModel.requestIdentityReset() }) {
                 Text("身份重置", color = MaterialTheme.colorScheme.error)
             }
 
