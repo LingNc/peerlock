@@ -18,6 +18,7 @@ import com.peerlock.ui.controller.DeviceSelectScreen
 import com.peerlock.ui.controller.RequestApprovalScreen
 import com.peerlock.ui.controller.UnlockAppScreen
 import com.peerlock.ui.emergency.EmergencyScreen
+import com.peerlock.ui.onboarding.AlreadyBoundScreen
 import com.peerlock.ui.onboarding.DeviceOwnerSetupScreen
 import com.peerlock.ui.onboarding.PairingConfirmScreen
 import com.peerlock.ui.onboarding.PairingScreen
@@ -50,6 +51,7 @@ object Routes {
     const val STRATEGY_MANAGEMENT = "strategy_management"
     const val TERMINATE_CODE = "terminate_code"
     const val APPLY_UNBIND = "apply_unbind"
+    const val ALREADY_BOUND = "already_bound"
 
     fun pairing(role: String) = "pairing/$role"
     fun pairingConfirm(role: String) = "pairing_confirm/$role"
@@ -79,11 +81,20 @@ fun PeerLockNavHost(
                 onRoleSelected = { role ->
                     if (role == "controller") {
                         navController.navigate(Routes.pairing("controller"))
+                    } else if (securePrefs.isPaired && securePrefs.role == "controlled") {
+                        navController.navigate(Routes.ALREADY_BOUND)
                     } else {
                         navController.navigate(Routes.DEVICE_OWNER_SETUP)
                     }
                 },
                 onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
+            )
+        }
+
+        composable(Routes.ALREADY_BOUND) {
+            AlreadyBoundScreen(
+                onNavigateToPairingInfo = { navController.navigate(Routes.PAIRING_INFO) },
+                onBack = { navController.popBackStack() },
             )
         }
 
