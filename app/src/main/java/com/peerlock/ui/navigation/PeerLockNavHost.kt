@@ -153,6 +153,7 @@ fun PeerLockNavHost(
             ControllerHomeScreen(
                 onNavigateToUnlockRequest = { navController.navigate(Routes.UNLOCK_APP) },
                 onNavigateToApproval = { navController.navigate(Routes.REQUEST_APPROVAL) },
+                onNavigateToAdjustPolicy = { navController.navigate(Routes.ADJUST_POLICY) },
                 onNavigateToStats = { navController.navigate(Routes.STATS) },
                 onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
             )

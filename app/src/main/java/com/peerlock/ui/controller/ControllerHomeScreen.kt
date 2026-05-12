@@ -44,6 +44,7 @@ import com.peerlock.ui.common.StatusCard
 fun ControllerHomeScreen(
     onNavigateToUnlockRequest: () -> Unit = {},
     onNavigateToApproval: () -> Unit = {},
+    onNavigateToAdjustPolicy: () -> Unit = {},
     onNavigateToStats: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     viewModel: ControllerViewModel = hiltViewModel(),
@@ -93,6 +94,15 @@ fun ControllerHomeScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("解锁应用")
+                }
+            }
+
+            item {
+                OutlinedButton(
+                    onClick = onNavigateToAdjustPolicy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("调整策略")
                 }
             }
 
