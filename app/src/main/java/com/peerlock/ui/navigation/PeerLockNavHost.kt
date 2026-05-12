@@ -22,6 +22,7 @@ import com.peerlock.ui.onboarding.PairingConfirmScreen
 import com.peerlock.ui.onboarding.PairingScreen
 import com.peerlock.ui.onboarding.RoleSelectionScreen
 import com.peerlock.ui.stats.StatsScreen
+import com.peerlock.ui.settings.PairingInfoScreen
 import com.peerlock.ui.settings.RevokeDoScreen
 import com.peerlock.ui.settings.SettingsScreen
 
@@ -220,7 +221,11 @@ fun PeerLockNavHost(
         }
 
         composable(Routes.PAIRING_INFO) {
-            PlaceholderScreen(title = "配对信息", onBack = { navController.popBackStack() })
+            PairingInfoScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToTerminateCode = { navController.navigate(Routes.TERMINATE_CODE) },
+                onNavigateToApplyUnbind = { navController.navigate(Routes.APPLY_UNBIND) },
+            )
         }
 
         composable(Routes.REVOKE_DO) {
