@@ -41,6 +41,7 @@ fun DeviceOwnerSetupScreen(
     onContinue: () -> Unit,
     onSkip: () -> Unit,
     onBack: () -> Unit = {},
+    showSkip: Boolean = true,
     viewModel: DeviceOwnerSetupViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -69,6 +70,7 @@ fun DeviceOwnerSetupScreen(
             onDoComplete = { viewModel.advanceToDoComplete() },
             onSkip = onSkip,
             onBack = onBack,
+            showSkip = showSkip,
         )
         SetupPhase.BATTERY_OPTIMIZATION -> BatteryOptimizationStep(
             isExempt = uiState.isBatteryExempt,
@@ -84,6 +86,7 @@ fun DeviceOwnerSetupScreen(
                 onContinue()
             },
             onBack = onBack,
+            showSkip = showSkip,
         )
     }
 }
@@ -100,6 +103,7 @@ private fun DeviceOwnerStep(
     onDoComplete: () -> Unit,
     onSkip: () -> Unit,
     onBack: () -> Unit,
+    showSkip: Boolean = true,
 ) {
     Scaffold(
         topBar = {
@@ -223,8 +227,10 @@ private fun DeviceOwnerStep(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-                OutlinedButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
-                    Text("跳过（功能受限）")
+                if (showSkip) {
+                    OutlinedButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
+                        Text("跳过（功能受限）")
+                    }
                 }
             }
         }
@@ -241,6 +247,7 @@ private fun BatteryOptimizationStep(
     onContinue: () -> Unit,
     onSkip: () -> Unit,
     onBack: () -> Unit,
+    showSkip: Boolean = true,
 ) {
     Scaffold(
         topBar = {
@@ -312,8 +319,10 @@ private fun BatteryOptimizationStep(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-                OutlinedButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
-                    Text("跳过（后台巡检可能不稳定）")
+                if (showSkip) {
+                    OutlinedButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
+                        Text("跳过（后台巡检可能不稳定）")
+                    }
                 }
             }
         }

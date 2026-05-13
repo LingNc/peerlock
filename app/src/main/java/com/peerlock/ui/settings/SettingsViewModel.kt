@@ -21,6 +21,7 @@ data class SettingsUiState(
     val language: String = "zh",
     val isDeviceOwner: Boolean = false,
     val isBatteryExempt: Boolean = false,
+    val isPaired: Boolean = false,
     val versionTapCount: Int = 0,
     val l2Unlocked: Boolean = false,
     val showResetConfirm: Boolean = false,
@@ -46,6 +47,7 @@ class SettingsViewModel @Inject constructor(
             language = prefs.getString("language", "zh") ?: "zh",
             isDeviceOwner = deviceOwnerManager.isDeviceOwner(),
             isBatteryExempt = securePrefs.batteryOptimizationDone,
+            isPaired = securePrefs.isPaired,
         )
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()

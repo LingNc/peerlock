@@ -76,107 +76,122 @@ fun PairingInfoScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // 当前配对信息
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("当前配对", style = MaterialTheme.typography.titleMedium)
-            }
-
-            item {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        InfoRow("对方设备", uiState.peerDeviceName)
-                        InfoRow("身份指纹", uiState.fingerprint)
-                        InfoRow("配对时间", uiState.pairingTime)
-                        InfoRow("会话 ID", uiState.sessionId)
-                        InfoRow("状态", uiState.status)
-                    }
-                }
-            }
-
-            if (uiState.role == "controller") {
+            if (!uiState.isPaired) {
+                // 未配对状态
                 item {
-                    OutlinedButton(
-                        onClick = { viewModel.toggleShowCodes() },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(if (uiState.showCodes) "隐藏验证码" else "查看验证码")
-                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("当前未配对", style = MaterialTheme.typography.titleMedium)
+                }
+                item {
+                    Text(
+                        "此设备尚未与任何设备配对。\n请先完成配对流程。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                // 已配对状态 — 当前配对信息
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("当前配对", style = MaterialTheme.typography.titleMedium)
                 }
 
-                if (uiState.showCodes) {
-                    items(uiState.totpCodes) { codeInfo ->
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column {
-                                    Text(text = codeInfo.label, style = MaterialTheme.typography.bodyMedium)
-                                    Text(
-                                        text = codeInfo.code,
-                                        style = MaterialTheme.typography.headlineMedium.copy(
-                                            fontFamily = FontFamily.Monospace,
-                                            letterSpacing = 4.sp,
-                                        ),
-                                    )
-                                }
-                                Text(
-                                    text = "${codeInfo.remainingSeconds}s",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = if (codeInfo.remainingSeconds <= 5) MaterialTheme.colorScheme.error
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                item {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            InfoRow("对方设备", uiState.peerDeviceName)
+                            InfoRow("身份指纹", uiState.fingerprint)
+                            InfoRow("配对时间", uiState.pairingTime)
+                            InfoRow("会话 ID", uiState.sessionId)
+                            InfoRow("状态", uiState.status)
                         }
                     }
                 }
 
+                if (uiState.role == "controller") {
+                    item {
+                        OutlinedButton(
+                            onClick = { viewModel.toggleShowCodes() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(if (uiState.showCodes) "隐藏验证码" else "查看验证码")
+                        }
+                    }
+
+                    if (uiState.showCodes) {
+                        items(uiState.totpCodes) { codeInfo ->
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier
+                                        .padding(16.dp)
+                                        .fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column {
+                                        Text(text = codeInfo.label, style = MaterialTheme.typography.bodyMedium)
+                                        Text(
+                                            text = codeInfo.code,
+                                            style = MaterialTheme.typography.headlineMedium.copy(
+                                                fontFamily = FontFamily.Monospace,
+                                                letterSpacing = 4.sp,
+                                            ),
+                                        )
+                                    }
+                                    Text(
+                                        text = "${codeInfo.remainingSeconds}s",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        color = if (codeInfo.remainingSeconds <= 5) MaterialTheme.colorScheme.error
+                                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    item {
+                        TextButton(
+                            onClick = { viewModel.deleteSeedsForSession(uiState.sessionIdFull) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("申请删除种子")
+                        }
+                    }
+                }
+
+                // 底部红色操作
                 item {
-                    TextButton(
-                        onClick = { viewModel.deleteSeedsForSession(uiState.sessionIdFull) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("申请删除种子")
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                }
+
+                if (uiState.role == "controller") {
+                    item {
+                        TextButton(
+                            onClick = onNavigateToTerminateCode,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                "显示终止码",
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                } else if (uiState.role == "controlled") {
+                    item {
+                        TextButton(
+                            onClick = onNavigateToApplyUnbind,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                "申请解除",
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
                     }
                 }
             }
 
-            // 底部红色操作
-            item {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-
-            if (uiState.role == "controller") {
-                item {
-                    TextButton(
-                        onClick = onNavigateToTerminateCode,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            "显示终止码",
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                }
-            } else {
-                item {
-                    TextButton(
-                        onClick = onNavigateToApplyUnbind,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            "申请解除",
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                }
-            }
-
-            // 历史配对记录
+            // 历史配对记录（始终显示，无论是否已配对）
             if (uiState.historySessions.isNotEmpty()) {
                 item {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))

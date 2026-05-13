@@ -114,11 +114,8 @@ fun PeerLockNavHost(
                         popUpTo(0) { inclusive = true }
                     }
                 },
-                onSkip = {
-                    navController.navigate(Routes.PAIRING.replace("{role}", "controlled")) {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
+                onSkip = {},
+                showSkip = false,
                 onBack = { navController.popBackStack() },
             )
         }

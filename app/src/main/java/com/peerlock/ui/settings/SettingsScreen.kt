@@ -214,9 +214,11 @@ fun SettingsScreen(
 
             HorizontalDivider()
 
-            // 切换角色
-            TextButton(onClick = onNavigateToRoleSelection) {
-                Text("切换角色")
+            // 切换角色（仅未配对时显示）
+            if (!uiState.isPaired) {
+                TextButton(onClick = onNavigateToRoleSelection) {
+                    Text("切换角色")
+                }
             }
 
             // 取消 DO（仅当 DO 已设置且非被控端管控时可用）
@@ -226,9 +228,11 @@ fun SettingsScreen(
                 }
             }
 
-            // 身份重置
-            TextButton(onClick = { viewModel.requestIdentityReset() }) {
-                Text("身份重置", color = MaterialTheme.colorScheme.error)
+            // 身份重置（仅已配对时显示）
+            if (uiState.isPaired) {
+                TextButton(onClick = { viewModel.requestIdentityReset() }) {
+                    Text("身份重置", color = MaterialTheme.colorScheme.error)
+                }
             }
 
             // 版本号（连点7次解锁 L2 高级解除）
