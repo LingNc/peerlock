@@ -21,6 +21,7 @@ object PeerLockLogger {
     fun d(tag: String, msg: String) = log(LogLevel.D, tag, msg)
     fun i(tag: String, msg: String) = log(LogLevel.I, tag, msg)
     fun w(tag: String, msg: String) = log(LogLevel.W, tag, msg)
+    fun w(tag: String, msg: String, t: Throwable) = log(LogLevel.W, tag, "$msg\n${Log.getStackTraceString(t)}")
 
     fun e(tag: String, msg: String, t: Throwable? = null) {
         val fullMsg = if (t != null) "$msg\n${Log.getStackTraceString(t)}" else msg

@@ -8,7 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
-import android.util.Log
+import com.peerlock.system.log.PeerLockLogger
 import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
 import kotlinx.coroutines.CoroutineScope
@@ -110,7 +110,7 @@ class AdbPairingService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        Log.i(TAG, "ADB配对任务已移除，清理状态")
+        PeerLockLogger.i(TAG, "ADB配对任务已移除，清理状态")
         cancelAll()
         stopSelf()
     }
@@ -123,7 +123,7 @@ class AdbPairingService : Service() {
 
         pairingMdns?.stop()
         pairingMdns = AdbMdns(this, AdbMdns.TLS_PAIRING) { port ->
-            Log.i(TAG, "Pairing service found on port $port")
+            PeerLockLogger.i(TAG, "Pairing service found on port $port")
             _pairingPort.value = port
             _state.value = AdbPairingState.FOUND
             _message.value = "已发现配对服务（端口 $port）"
@@ -132,7 +132,7 @@ class AdbPairingService : Service() {
 
         connectMdns?.stop()
         connectMdns = AdbMdns(this, AdbMdns.TLS_CONNECT) { port ->
-            Log.i(TAG, "ADB connect service found on port $port")
+            PeerLockLogger.i(TAG, "ADB connect service found on port $port")
             _connectPort.value = port
         }.also { it.start() }
     }
@@ -222,7 +222,7 @@ class AdbPairingService : Service() {
                     updateNotification("配对失败", "配对码错误")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Pairing failed", e)
+                PeerLockLogger.e(TAG, "Pairing failed", e)
                 _state.value = AdbPairingState.ERROR
                 _message.value = "错误: ${e.message}"
                 updateNotification("配对出错", e.message ?: "未知错误")
@@ -262,11 +262,11 @@ class AdbPairingService : Service() {
                 val result = client.shellCommand(
                     "dpm set-device-owner $packageName/.system.deviceadmin.PeerLockDeviceAdminReceiver",
                 )
-                Log.i(TAG, "DO command result: $result")
+                PeerLockLogger.i(TAG, "DO command result: $result")
                 result.contains("Success")
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed on port $port: ${e.message}")
+            PeerLockLogger.w(TAG, "Failed on port $port: ${e.message}")
             false
         }
     }

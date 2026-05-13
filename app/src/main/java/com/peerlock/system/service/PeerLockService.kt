@@ -14,7 +14,7 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.IBinder
 import android.os.SystemClock
-import android.util.Log
+import com.peerlock.system.log.PeerLockLogger
 import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.data.usage.UsageAggregator
 import com.peerlock.data.usage.UsageStatsCollector
@@ -56,16 +56,16 @@ class PeerLockService : Service() {
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             if (safeModeManager.isInSafeMode()) {
-                Log.i(TAG, "网络恢复，尝试 NTP 校验退出安全模式")
+                PeerLockLogger.i(TAG, "网络恢复，尝试 NTP 校验退出安全模式")
                 serviceScope.launch {
                     try {
                         val result = timeSyncManager.syncWithNtp()
                         if (result is SyncResult.Success) {
                             safeModeManager.exitSafeMode()
-                            Log.i(TAG, "NTP 校验成功，已退出安全模式")
+                            PeerLockLogger.i(TAG, "NTP 校验成功，已退出安全模式")
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "网络恢复后 NTP 校验失败", e)
+                        PeerLockLogger.e(TAG, "网络恢复后 NTP 校验失败", e)
                     }
                 }
             }
@@ -77,7 +77,7 @@ class PeerLockService : Service() {
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification())
         registerNetworkCallback()
-        Log.i(TAG, "前台服务已创建")
+        PeerLockLogger.i(TAG, "前台服务已创建")
     }
 
     private fun registerNetworkCallback() {
@@ -88,7 +88,7 @@ class PeerLockService : Service() {
                 .build()
             cm.registerNetworkCallback(request, networkCallback)
         } catch (e: Exception) {
-            Log.w(TAG, "注册网络回调失败", e)
+            PeerLockLogger.w(TAG, "注册网络回调失败", e)
         }
     }
 
@@ -111,7 +111,7 @@ class PeerLockService : Service() {
                 patrolLogic.executePatrol()
                 updateNotification()
             } catch (e: Exception) {
-                Log.e(TAG, "巡检异常: ${e.message}", e)
+                PeerLockLogger.e(TAG, "巡检异常: ${e.message}", e)
             }
             scheduleNextPatrol()
         }
@@ -128,14 +128,14 @@ class PeerLockService : Service() {
         } catch (_: Exception) {}
         cancelAlarm()
         serviceScope.cancel()
-        Log.i(TAG, "前台服务已停止")
+        PeerLockLogger.i(TAG, "前台服务已停止")
         super.onDestroy()
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
         // 用户从最近任务移除时，重新调度巡检以保持服务存活
-        Log.i(TAG, "任务已移除，重新调度巡检")
+        PeerLockLogger.i(TAG, "任务已移除，重新调度巡检")
         scheduleNextPatrol()
     }
 

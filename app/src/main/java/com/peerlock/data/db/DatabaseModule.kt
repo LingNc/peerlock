@@ -30,7 +30,7 @@ object DatabaseModule {
         val passphrase = try {
             keystoreManager.generateDbPassphrase()
         } catch (e: Exception) {
-            android.util.Log.w("DatabaseModule", "Keystore 不可用，使用备用密码", e)
+            com.peerlock.system.log.PeerLockLogger.w("DatabaseModule", "Keystore 不可用，使用备用密码", e)
             "peerlock_fallback_${context.packageName}".toByteArray()
         }
         val factory = SupportFactory(passphrase)

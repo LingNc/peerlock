@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.os.Build
-import android.util.Log
+import com.peerlock.system.log.PeerLockLogger
 import androidx.annotation.RequiresApi
 import java.io.IOException
 import java.net.InetSocketAddress
@@ -68,7 +68,7 @@ internal class AdbMdns(
     private class DiscoveryListener(private val mdns: AdbMdns) : NsdManager.DiscoveryListener {
         override fun onDiscoveryStarted(serviceType: String) { mdns.onDiscoveryStart() }
         override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
-            Log.w(TAG, "Discovery start failed: $errorCode")
+            PeerLockLogger.w(TAG, "Discovery start failed: $errorCode")
         }
         override fun onDiscoveryStopped(serviceType: String) { mdns.onDiscoveryStop() }
         override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {}
