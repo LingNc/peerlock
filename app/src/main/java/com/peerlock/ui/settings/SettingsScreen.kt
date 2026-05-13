@@ -44,6 +44,7 @@ fun SettingsScreen(
     onNavigateToRoleSelection: () -> Unit = {},
     onNavigateToDeviceOwnerSetup: () -> Unit = {},
     onNavigateToLog: () -> Unit = {},
+    onNavigateToIdentityInfo: () -> Unit = {},
     onL2UnlockedChange: (Boolean) -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -170,6 +171,14 @@ fun SettingsScreen(
             )
 
             HorizontalDivider()
+
+            // 本机身份
+            SettingItem(
+                label = "本机身份",
+                value = null,
+                enabled = true,
+                onClick = onNavigateToIdentityInfo,
+            )
 
             // 配对信息
             SettingItem(

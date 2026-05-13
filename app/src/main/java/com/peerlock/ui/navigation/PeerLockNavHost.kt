@@ -33,6 +33,7 @@ import com.peerlock.ui.onboarding.PairingScreen
 import com.peerlock.ui.onboarding.RoleSelectionScreen
 import com.peerlock.ui.stats.StatsScreen
 import com.peerlock.ui.settings.ApplyUnbindScreen
+import com.peerlock.ui.settings.IdentityInfoScreen
 import com.peerlock.ui.settings.LogScreen
 import com.peerlock.ui.settings.PairingInfoScreen
 import com.peerlock.ui.settings.RevokeDoScreen
@@ -63,6 +64,7 @@ object Routes {
     const val ALREADY_BOUND = "already_bound"
     const val DEVICE_OWNER_SETUP_SETTINGS = "device_owner_setup_settings"
     const val LOG = "log"
+    const val IDENTITY_INFO = "identity_info"
 
     fun pairing(role: String) = "pairing/$role"
     fun pairingConfirm(role: String) = "pairing_confirm/$role"
@@ -271,6 +273,7 @@ fun PeerLockNavHost(
                     navController.navigate(Routes.DEVICE_OWNER_SETUP_SETTINGS)
                 },
                 onNavigateToLog = { navController.navigate("${Routes.LOG}?l2=$l2Unlocked") },
+                onNavigateToIdentityInfo = { navController.navigate(Routes.IDENTITY_INFO) },
                 onL2UnlockedChange = { l2Unlocked = it },
             )
         }
@@ -305,6 +308,17 @@ fun PeerLockNavHost(
             LogScreen(
                 onBack = { navController.popBackStack() },
                 l2Unlocked = l2,
+            )
+        }
+
+        composable(Routes.IDENTITY_INFO) {
+            IdentityInfoScreen(
+                onBack = { navController.popBackStack() },
+                onResetComplete = {
+                    navController.navigate(Routes.ROLE_SELECTION) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
             )
         }
     }

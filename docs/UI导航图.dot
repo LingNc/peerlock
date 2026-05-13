@@ -468,6 +468,12 @@ digraph PeerLockUI {
             fillcolor="#EDE7F6",
             color="#5E35B1"
         ];
+
+        IDENTITY [
+            label=<本机身份页<BR/><FONT POINT-SIZE="8" COLOR="#616161">设备型号 / 密钥曲线 / 身份指纹<BR/>指纹用于配对核对<BR/>[重置身份] 10s冷却→确认<BR/>存在配对数据时可重置</FONT>>,
+            fillcolor="#EDE7F6",
+            color="#5E35B1"
+        ];
     }
 
     // =====================================================================
@@ -567,6 +573,7 @@ digraph PeerLockUI {
     SET -> RS [label="切换角色\npopUpTo(0)", color="#5E35B1", fontcolor="#5E35B1"];
     SET -> DO1 [label="DO行→详情页\n(已设置: 取消DO)\n(未设置: ADB引导)", color="#C2185B"];
     SET -> PAIR_INFO [label="配对信息", color="#5E35B1"];
+    SET -> IDENTITY [label="本机身份", color="#5E35B1"];
     SET -> LOG [label="调试日志", color="#5E35B1"];
     SET -> BATTERY [label="电池未关闭时\n→ 引导对话框", color="#C2185B"];
 
