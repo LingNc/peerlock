@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.domain.policy.PolicyEngine
+import com.peerlock.domain.repository.AuditLog
+import com.peerlock.domain.repository.StorageRepository
 import com.peerlock.domain.request.RequestProtocol
 import com.peerlock.domain.request.ResponseEnvelope
 import com.peerlock.domain.request.ResponsePayload
@@ -34,6 +36,7 @@ class ReceiveCommandViewModel @Inject constructor(
     private val requestProtocol: RequestProtocol,
     private val policyEngine: PolicyEngine,
     private val securePrefs: SecurePrefs,
+    private val storageRepository: StorageRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReceiveCommandUiState())
@@ -101,6 +104,17 @@ class ReceiveCommandViewModel @Inject constructor(
                     isLoading = false,
                     executeSuccess = true,
                 )
+                storageRepository.insertAuditLog(
+                    AuditLog(
+                        timestamp = System.currentTimeMillis(),
+                        action = "COMMAND_EXECUTE",
+                        targetPackage = when (val p = response.payload) {
+                            is ResponsePayload.UnlockResponse -> p.targetPackage
+                            else -> null
+                        },
+                        detail = "执行指令: ${response.type}",
+                    )
+                )
             } else {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -112,6 +126,19 @@ class ReceiveCommandViewModel @Inject constructor(
     }
 
     fun reject() {
+        val response = pendingResponse
+        if (response != null) {
+            viewModelScope.launch {
+                storageRepository.insertAuditLog(
+                    AuditLog(
+                        timestamp = System.currentTimeMillis(),
+                        action = "COMMAND_REJECT",
+                        targetPackage = null,
+                        detail = "拒绝指令: ${response.type}",
+                    )
+                )
+            }
+        }
         pendingResponse = null
         _uiState.value = ReceiveCommandUiState()
     }
