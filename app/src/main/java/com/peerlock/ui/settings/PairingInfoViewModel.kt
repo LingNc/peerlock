@@ -135,15 +135,24 @@ class PairingInfoViewModel @Inject constructor(
     private suspend fun refreshTotpCodes() {
         val codes = listOf(KeyType.SETTING, KeyType.UNLOCK).mapNotNull { keyType ->
             val seed = seedManager.retrieveSeed(keyType) ?: return@mapNotNull null
-            val code = totpEngine.generateCode(seed)
-            val step = totpEngine.currentStep()
-            val remaining = ((step + 1) * 30 - System.currentTimeMillis() / 1000).toInt()
-            TotpCodeInfo(
-                keyType = keyType,
-                label = keyType.label,
-                code = code,
-                remainingSeconds = remaining.coerceAtLeast(0),
-            )
+            try {
+                val code = totpEngine.generateCode(seed)
+                val step = totpEngine.currentStep()
+                val remaining = ((step + 1) * 30 - System.currentTimeMillis() / 1000).toInt()
+                TotpCodeInfo(
+                    keyType = keyType,
+                    label = keyType.label,
+                    code = code,
+                    remainingSeconds = remaining.coerceAtLeast(0),
+                )
+            } catch (e: Exception) {
+                TotpCodeInfo(
+                    keyType = keyType,
+                    label = keyType.label,
+                    code = "------",
+                    remainingSeconds = 0,
+                )
+            }
         }
         _uiState.value = _uiState.value.copy(totpCodes = codes)
     }
@@ -158,7 +167,11 @@ class PairingInfoViewModel @Inject constructor(
 
     private fun computeFingerprint(publicKeyBase64: String): String {
         if (publicKeyBase64.isBlank()) return "--------"
-        val keyBytes = try { Base64.getDecoder().decode(publicKeyBase64) } catch (_: Exception) { publicKeyBase64.toByteArray() }
+        val keyBytes = try {
+            Base64.getDecoder().decode(publicKeyBase64)
+        } catch (_: Exception) {
+            return "--------"
+        }
         val hash = MessageDigest.getInstance("SHA-256").digest(keyBytes)
         return hash.take(4).joinToString("") { "%02x".format(it) }
     }
