@@ -42,15 +42,23 @@ class IdentityInfoViewModel @Inject constructor(
     }
 
     private suspend fun loadIdentityInfo() {
-        val pubKeyBase64 = securePrefs.myPublicKey
-        val fingerprint = computeFingerprint(pubKeyBase64)
-        val sessions = pairingSessionDao.getNonArchived()
-        _uiState.value = IdentityInfoUiState(
-            fingerprint = fingerprint,
-            curveType = cryptoEngine.curveName,
-            deviceName = android.os.Build.MODEL,
-            canReset = sessions.isNotEmpty(),
-        )
+        try {
+            val pubKeyBase64 = securePrefs.myPublicKey
+            val fingerprint = computeFingerprint(pubKeyBase64)
+            val sessions = try { pairingSessionDao.getNonArchived() } catch (_: Exception) { emptyList() }
+            _uiState.value = IdentityInfoUiState(
+                fingerprint = fingerprint,
+                curveType = cryptoEngine.curveName,
+                deviceName = android.os.Build.MODEL,
+                canReset = sessions.isNotEmpty(),
+            )
+        } catch (e: Exception) {
+            _uiState.value = IdentityInfoUiState(
+                fingerprint = "--------",
+                curveType = cryptoEngine.curveName,
+                deviceName = android.os.Build.MODEL,
+            )
+        }
     }
 
     fun requestReset() {
