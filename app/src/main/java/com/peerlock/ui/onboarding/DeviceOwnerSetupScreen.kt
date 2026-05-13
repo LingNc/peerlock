@@ -24,6 +24,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -62,6 +63,15 @@ fun DeviceOwnerSetupScreen(
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // Onboarding 流程：DO 已设置时自动跳过，直接进入下一步
+    LaunchedEffect(uiState.isDeviceOwner, uiState.phase) {
+        if (!showRevokeDo && uiState.isDeviceOwner && uiState.phase == SetupPhase.DO_SETUP) {
+            if (viewModel.advanceToDoComplete()) {
+                onContinue()
+            }
+        }
     }
 
     when (uiState.phase) {
@@ -159,8 +169,11 @@ private fun DeviceOwnerStep(
                     )
                 }
                 Spacer(modifier = Modifier.height(24.dp))
-                Button(onClick = onDoComplete, modifier = Modifier.fillMaxWidth()) {
-                    Text("继续")
+                // 设置页：只显示取消按钮；onboarding 流程：显示继续按钮
+                if (!showRevokeDo) {
+                    Button(onClick = onDoComplete, modifier = Modifier.fillMaxWidth()) {
+                        Text("继续")
+                    }
                 }
                 if (showRevokeDo) {
                     Spacer(modifier = Modifier.height(12.dp))
