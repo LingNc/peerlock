@@ -26,6 +26,7 @@ class DeviceOwnerManagerImpl(
 
     override fun removeDeviceOwner(): Boolean {
         return try {
+            @Suppress("DEPRECATION")
             dpm.clearDeviceOwnerApp(context.packageName)
             true
         } catch (e: Exception) {

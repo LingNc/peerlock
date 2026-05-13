@@ -41,6 +41,7 @@ fun DeviceOwnerSetupScreen(
     onContinue: () -> Unit,
     onSkip: () -> Unit,
     onBack: () -> Unit = {},
+    onNavigateToRevokeDo: () -> Unit = {},
     showSkip: Boolean = true,
     viewModel: DeviceOwnerSetupViewModel = hiltViewModel(),
 ) {
@@ -70,6 +71,7 @@ fun DeviceOwnerSetupScreen(
             onDoComplete = { viewModel.advanceToDoComplete() },
             onSkip = onSkip,
             onBack = onBack,
+            onNavigateToRevokeDo = onNavigateToRevokeDo,
             showSkip = showSkip,
         )
         SetupPhase.BATTERY_OPTIMIZATION -> BatteryOptimizationStep(
@@ -103,6 +105,7 @@ private fun DeviceOwnerStep(
     onDoComplete: () -> Unit,
     onSkip: () -> Unit,
     onBack: () -> Unit,
+    onNavigateToRevokeDo: () -> Unit = {},
     showSkip: Boolean = true,
 ) {
     Scaffold(
@@ -136,6 +139,10 @@ private fun DeviceOwnerStep(
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(onClick = onDoComplete, modifier = Modifier.fillMaxWidth()) {
                     Text("继续")
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(onClick = onNavigateToRevokeDo, modifier = Modifier.fillMaxWidth()) {
+                    Text("取消 Device Owner", color = MaterialTheme.colorScheme.error)
                 }
             } else {
                 Text(

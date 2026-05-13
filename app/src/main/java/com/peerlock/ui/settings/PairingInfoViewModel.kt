@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
+import java.util.Base64
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
@@ -157,8 +158,8 @@ class PairingInfoViewModel @Inject constructor(
 
     private fun computeFingerprint(publicKeyBase64: String): String {
         if (publicKeyBase64.isBlank()) return "--------"
-        val hash = MessageDigest.getInstance("SHA-256")
-            .digest(publicKeyBase64.toByteArray())
+        val keyBytes = try { Base64.getDecoder().decode(publicKeyBase64) } catch (_: Exception) { publicKeyBase64.toByteArray() }
+        val hash = MessageDigest.getInstance("SHA-256").digest(keyBytes)
         return hash.take(4).joinToString("") { "%02x".format(it) }
     }
 }

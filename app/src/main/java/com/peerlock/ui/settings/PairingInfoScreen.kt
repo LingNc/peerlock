@@ -13,6 +13,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,6 +32,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
@@ -46,6 +52,28 @@ fun PairingInfoScreen(
     viewModel: PairingInfoViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
+
+    // 删除种子确认对话框
+    showDeleteConfirm?.let { sessionId ->
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = null },
+            title = { Text("确认删除种子", color = MaterialTheme.colorScheme.error) },
+            text = { Text("删除种子后将无法恢复此会话的 TOTP 验证码。此操作不可逆。") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteSeedsForSession(sessionId)
+                        showDeleteConfirm = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                ) { Text("确认删除") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = null }) { Text("取消") }
+            },
+        )
+    }
 
     // FLAG_SECURE 防截图
     val view = LocalView.current
@@ -151,7 +179,7 @@ fun PairingInfoScreen(
 
                     item {
                         TextButton(
-                            onClick = { viewModel.deleteSeedsForSession(uiState.sessionIdFull) },
+                            onClick = { showDeleteConfirm = uiState.sessionIdFull },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text("申请删除种子")
@@ -216,7 +244,7 @@ fun PairingInfoScreen(
                                 Text(session.status, style = MaterialTheme.typography.bodySmall)
                             }
                             if (session.status == "REVOKED") {
-                                TextButton(onClick = { viewModel.deleteSeedsForSession(session.sessionId) }) {
+                                TextButton(onClick = { showDeleteConfirm = session.sessionId }) {
                                     Text("删除种子", style = MaterialTheme.typography.bodySmall)
                                 }
                             }

@@ -50,11 +50,12 @@ class DeviceOwnerSetupViewModel @Inject constructor(
     }
 
     fun checkDeviceOwnerStatus() {
+        _uiState.value = _uiState.value.copy(statusMessage = "正在检查...")
         val isOwner = deviceOwnerManager.isDeviceOwner()
         _uiState.value = _uiState.value.copy(
             isDeviceOwner = isOwner,
             isChecked = true,
-            statusMessage = if (!isOwner) "Device Owner 未设置，请先在电脑上执行命令" else null,
+            statusMessage = if (isOwner) "Device Owner 已设置" else "Device Owner 未设置",
         )
     }
 
@@ -70,7 +71,8 @@ class DeviceOwnerSetupViewModel @Inject constructor(
     fun advanceToDoComplete() {
         // DO 步骤完成后，检查电池优化是否已豁免
         checkBatteryOptimization()
-        if (_uiState.value.isBatteryExempt) {
+        val batteryExempt = _uiState.value.isBatteryExempt
+        if (batteryExempt) {
             // 已豁免，直接标记完成
             securePrefs.batteryOptimizationDone = true
         } else {

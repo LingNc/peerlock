@@ -104,6 +104,7 @@ fun PeerLockNavHost(
                 onContinue = { navController.popBackStack() },
                 onSkip = { navController.popBackStack() },
                 onBack = { navController.popBackStack() },
+                onNavigateToRevokeDo = { navController.navigate(Routes.REVOKE_DO) },
             )
         }
 
@@ -242,7 +243,6 @@ fun PeerLockNavHost(
             SettingsScreen(
                 onBack = { navController.popBackStack() },
                 onNavigateToPairingInfo = { navController.navigate(Routes.PAIRING_INFO) },
-                onNavigateToRevokeDo = { navController.navigate(Routes.REVOKE_DO) },
                 onNavigateToRoleSelection = {
                     navController.navigate(Routes.ROLE_SELECTION) {
                         popUpTo(0) { inclusive = true }

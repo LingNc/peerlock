@@ -25,24 +25,39 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     onNavigateToPairingInfo: () -> Unit = {},
-    onNavigateToRevokeDo: () -> Unit = {},
     onNavigateToRoleSelection: () -> Unit = {},
     onNavigateToDeviceOwnerSetup: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // 监听 onResume，刷新电池优化状态
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshBatteryStatus()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(uiState.resetComplete) {
         if (uiState.resetComplete) onNavigateToRoleSelection()
@@ -143,14 +158,8 @@ fun SettingsScreen(
             SettingItem(
                 label = "电池优化",
                 value = if (uiState.isBatteryExempt) "✓ 已关闭" else "✗ 未关闭",
-                enabled = true,
-                onClick = {
-                    if (uiState.isBatteryExempt) {
-                        // 已关闭，点击无操作
-                    } else {
-                        viewModel.showBatteryGuideDialog()
-                    }
-                },
+                enabled = !uiState.isBatteryExempt,
+                onClick = { viewModel.showBatteryGuideDialog() },
             )
 
             HorizontalDivider()
@@ -218,13 +227,6 @@ fun SettingsScreen(
             if (!uiState.isPaired) {
                 TextButton(onClick = onNavigateToRoleSelection) {
                     Text("切换角色")
-                }
-            }
-
-            // 取消 DO（仅当 DO 已设置且非被控端管控时可用）
-            if (uiState.isDeviceOwner) {
-                TextButton(onClick = onNavigateToRevokeDo) {
-                    Text("取消 Device Owner", color = MaterialTheme.colorScheme.error)
                 }
             }
 
