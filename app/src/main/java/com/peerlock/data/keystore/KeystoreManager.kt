@@ -13,7 +13,7 @@ import javax.crypto.SecretKey
  * 管理 Android Keystore 操作。
  * 所有密钥由硬件安全模块保护，不可导出。
  */
-class KeystoreManager {
+class KeystoreManager(private val appContext: android.content.Context) {
 
     private val keyStore: KeyStore by lazy {
         KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
@@ -112,8 +112,30 @@ class KeystoreManager {
 
     fun generateDbPassphrase(): ByteArray {
         val key = generateAesKey(KeyAlias.DB_PASSPHRASE_KEY)
-        val knownValue = "peerlock_db_v1".toByteArray()
-        return encrypt(knownValue, key)
+        // 首次生成后持久化加密结果，后续直接复用，保证进程重启后数据库密码一致
+        val existing = dbPassphraseCache
+        if (existing != null) return existing
+
+        val prefs = appContext.getSharedPreferences("peerlock_keystore", 0)
+        val stored = prefs.getString("db_passphrase_enc", null)
+        if (stored != null) {
+            val bytes = android.util.Base64.decode(stored, android.util.Base64.NO_WRAP)
+            dbPassphraseCache = bytes
+            return bytes
+        }
+
+        val plaintext = "peerlock_db_v1".toByteArray()
+        val encrypted = encrypt(plaintext, key)
+        dbPassphraseCache = encrypted
+        prefs.edit().putString(
+            "db_passphrase_enc",
+            android.util.Base64.encodeToString(encrypted, android.util.Base64.NO_WRAP)
+        ).apply()
+        return encrypted
+    }
+
+    companion object {
+        private var dbPassphraseCache: ByteArray? = null
     }
 
     fun hasKey(alias: String): Boolean {

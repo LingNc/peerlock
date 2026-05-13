@@ -46,7 +46,8 @@ object AppModule {
     fun provideTotpEngine(): TotpEngine = TotpEngineImpl()
 
     @Provides @Singleton
-    fun provideKeystoreManager(): KeystoreManager = KeystoreManager()
+    fun provideKeystoreManager(app: android.app.Application): KeystoreManager =
+        KeystoreManager(app.applicationContext)
 
     @Provides @Singleton
     fun provideSecurePrefs(app: android.app.Application): SecurePrefs =

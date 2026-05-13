@@ -35,13 +35,10 @@ object DatabaseModule {
         }
         val factory = SupportFactory(passphrase)
 
-        return Room.databaseBuilder(
-            context,
-            PeerLockDatabase::class.java,
-            "peerlock.db"
-        )
+        return Room.databaseBuilder(context, PeerLockDatabase::class.java, "peerlock.db")
             .openHelperFactory(factory)
             .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .fallbackToDestructiveMigrationOnDowngrade()
             .build()
     }
 
