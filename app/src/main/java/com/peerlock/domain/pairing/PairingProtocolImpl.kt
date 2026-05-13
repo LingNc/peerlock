@@ -34,13 +34,7 @@ class PairingProtocolImpl(
         pairingRepository.storeSessionId(sessionId)
         pairingRepository.storeRole("controlled")
 
-        // 归档所有旧的 WAITING 会话
-        val existing = pairingSessionDao.getByStatus("WAITING")
-        for (old in existing) {
-            pairingSessionDao.archive(old.sessionId)
-        }
-
-        // 创建 WAITING 会话记录
+        // 创建 WAITING 会话记录（不归档旧的，保留历史供被控端手动删除）
         val fingerprint = computeFingerprint(keyPair.publicKey)
         val entity = PairingSessionEntity(
             sessionId = sessionId,
