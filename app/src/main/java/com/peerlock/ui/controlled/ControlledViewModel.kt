@@ -1,5 +1,7 @@
 package com.peerlock.ui.controlled
 
+import android.app.Application
+import android.content.pm.ApplicationInfo
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.peerlock.data.prefs.SecurePrefs
@@ -9,6 +11,7 @@ import com.peerlock.domain.policy.PolicyEngine
 import com.peerlock.domain.policy.RestrictionPolicy
 import com.peerlock.domain.repository.StorageRepository
 import com.peerlock.domain.request.DeviceInfo
+import com.peerlock.domain.request.InstalledApp
 import com.peerlock.domain.request.RequestProtocol
 import com.peerlock.domain.totp.KeyType
 import com.peerlock.domain.totp.TotpEngine
@@ -30,6 +33,7 @@ data class ControlledUiState(
 
 @HiltViewModel
 class ControlledViewModel @Inject constructor(
+    private val application: Application,
     private val storageRepository: StorageRepository,
     private val requestProtocol: RequestProtocol,
     private val securePrefs: SecurePrefs,
@@ -75,6 +79,7 @@ class ControlledViewModel @Inject constructor(
                     todayScreenTimeMs = _uiState.value.todayScreenTimeMs,
                     suspendedApps = _uiState.value.policies.map { it.targetPackage },
                     isInSafeMode = false,
+                    installedApps = getInstalledApps(),
                 ),
             )
             if (result != null) {
@@ -119,5 +124,15 @@ class ControlledViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    private fun getInstalledApps(): List<InstalledApp> {
+        val pm = application.packageManager
+        val selfPackage = application.packageName
+        return pm.getInstalledApplications(0)
+            .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
+            .filter { it.packageName != selfPackage }
+            .map { InstalledApp(it.packageName, pm.getApplicationLabel(it).toString()) }
+            .sortedBy { it.appName }
     }
 }

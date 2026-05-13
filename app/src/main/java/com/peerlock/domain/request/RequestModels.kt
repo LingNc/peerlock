@@ -19,6 +19,13 @@ data class DeviceInfo(
     val suspendedApps: List<String>,
     val isInSafeMode: Boolean,
     val targetAppDetail: AppUsageDetail? = null,
+    val installedApps: List<InstalledApp> = emptyList(),
+)
+
+@Serializable
+data class InstalledApp(
+    val packageName: String,
+    val appName: String,
 )
 
 @Serializable

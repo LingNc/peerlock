@@ -117,6 +117,11 @@ class SecurePrefs(context: Context) {
         get() = prefs.getBoolean("battery_opt_done", false)
         set(value) = prefs.edit().putBoolean("battery_opt_done", value).apply()
 
+    // 管控端缓存的被控端应用列表 (JSON)
+    var remoteAppList: String?
+        get() = prefs.getString("remote_app_list", null)
+        set(value) = prefs.edit().putString("remote_app_list", value).apply()
+
     /** 选择性清除配对和加密材料，保留 DO 状态、使用数据配置、聚合状态等 */
     fun clearPairingData() {
         prefs.edit()

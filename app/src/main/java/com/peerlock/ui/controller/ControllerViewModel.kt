@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
 data class TotpCodeInfo(
@@ -111,6 +112,16 @@ class ControllerViewModel @Inject constructor(
             val peerPubKeyBytes = java.util.Base64.getDecoder().decode(peerPubKey)
             when (val result = requestProtocol.processRequest(scannedData, peerPubKeyBytes)) {
                 is ProcessResult.Success -> {
+                    // 缓存被控端应用列表
+                    val apps = result.envelope.deviceInfo.installedApps
+                    if (apps.isNotEmpty()) {
+                        securePrefs.remoteAppList = Json.encodeToString(
+                            kotlinx.serialization.builtins.ListSerializer(
+                                com.peerlock.domain.request.InstalledApp.serializer()
+                            ),
+                            apps,
+                        )
+                    }
                     _uiState.value = _uiState.value.copy(
                         approvalStep = ApprovalStep.REVIEWING,
                         pendingRequest = result.envelope,

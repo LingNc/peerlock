@@ -10,6 +10,7 @@ import com.peerlock.domain.policy.PolicyEngine
 import com.peerlock.domain.policy.RestrictionPolicy
 import com.peerlock.domain.repository.StorageRepository
 import com.peerlock.domain.request.DeviceInfo
+import com.peerlock.domain.request.InstalledApp
 import com.peerlock.domain.request.RequestProtocol
 import com.peerlock.domain.totp.KeyType
 import com.peerlock.domain.totp.TotpEngine
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
 data class PolicyTabState(
@@ -80,7 +82,7 @@ class StrategyManagementViewModel @Inject constructor(
         viewModelScope.launch {
             val policies = storageRepository.getActivePolicies()
             val role = securePrefs.role ?: ""
-            val installedApps = loadInstalledApps(policies)
+            val installedApps = loadInstalledApps(policies, role)
             _uiState.value = _uiState.value.copy(
                 role = role,
                 appPolicy = _uiState.value.appPolicy.copy(policies = policies),
@@ -89,9 +91,35 @@ class StrategyManagementViewModel @Inject constructor(
         }
     }
 
-    private fun loadInstalledApps(policies: List<RestrictionPolicy>): List<AppInfo> {
-        val pm = application.packageManager
+    private fun loadInstalledApps(policies: List<RestrictionPolicy>, role: String): List<AppInfo> {
         val policyPackages = policies.map { it.targetPackage }.toSet()
+
+        // 管控端：使用缓存的被控端应用列表
+        if (role == "controller") {
+            val cached = securePrefs.remoteAppList
+            if (cached != null) {
+                return try {
+                    Json.decodeFromString(
+                        kotlinx.serialization.builtins.ListSerializer(InstalledApp.serializer()),
+                        cached,
+                    )
+                        .map { app ->
+                            AppInfo(
+                                packageName = app.packageName,
+                                appName = app.appName,
+                                hasPolicy = app.packageName in policyPackages,
+                            )
+                        }
+                        .sortedWith(compareBy<AppInfo> { !it.hasPolicy }.thenBy { it.appName })
+                } catch (_: Exception) {
+                    emptyList()
+                }
+            }
+            return emptyList()
+        }
+
+        // 被控端：使用本机 PackageManager
+        val pm = application.packageManager
         val selfPackage = application.packageName
         return pm.getInstalledApplications(0)
             .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
