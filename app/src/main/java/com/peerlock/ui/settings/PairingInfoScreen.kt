@@ -215,15 +215,6 @@ fun PairingInfoScreen(
                             }
                         }
                     }
-
-                    item {
-                        TextButton(
-                            onClick = { showDeleteConfirm = uiState.sessionIdFull },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("申请删除种子")
-                        }
-                    }
                 }
 
                 // 底部红色操作
@@ -268,8 +259,10 @@ fun PairingInfoScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text("历史配对记录", style = MaterialTheme.typography.titleMedium)
-                        TextButton(onClick = { viewModel.toggleMultiSelect() }) {
-                            Text(if (uiState.multiSelectMode) "取消" else "多选")
+                        if (uiState.role == "controlled") {
+                            TextButton(onClick = { viewModel.toggleMultiSelect() }) {
+                                Text(if (uiState.multiSelectMode) "取消" else "多选")
+                            }
                         }
                     }
                 }
@@ -324,14 +317,19 @@ fun PairingInfoScreen(
                                     )
                                 }
                             }
-                            if (!uiState.multiSelectMode) {
+                            if (!uiState.multiSelectMode && uiState.role == "controlled") {
                                 when (session.status) {
                                     "WAITING" -> {
-                                        TextButton(onClick = { viewModel.archiveSession(session.sessionId) }) {
-                                            Text("归档", style = MaterialTheme.typography.bodySmall)
+                                        TextButton(onClick = { viewModel.deleteWaitingSession(session.sessionId) }) {
+                                            Text("删除", style = MaterialTheme.typography.bodySmall)
                                         }
                                     }
-                                    "REVOKED", "ARCHIVED" -> {
+                                    "REVOKED" -> {
+                                        TextButton(onClick = { showDeleteConfirm = session.sessionId }) {
+                                            Text("申请删除种子", style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                    "ARCHIVED" -> {
                                         TextButton(onClick = { viewModel.requestDelete(session.sessionId) }) {
                                             Text("删除", style = MaterialTheme.typography.bodySmall)
                                         }
@@ -342,7 +340,7 @@ fun PairingInfoScreen(
                     }
                 }
 
-                if (uiState.multiSelectMode && uiState.selectedIds.isNotEmpty()) {
+                if (uiState.role == "controlled" && uiState.multiSelectMode && uiState.selectedIds.isNotEmpty()) {
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(

@@ -178,6 +178,13 @@ class PairingInfoViewModel @Inject constructor(
         }
     }
 
+    fun deleteWaitingSession(sessionId: String) {
+        viewModelScope.launch {
+            pairingSessionDao.delete(sessionId)
+            loadPairingInfo()
+        }
+    }
+
     fun archiveSession(sessionId: String) {
         viewModelScope.launch {
             pairingSessionDao.archive(sessionId)
