@@ -6,7 +6,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -30,6 +33,7 @@ import com.peerlock.ui.onboarding.PairingScreen
 import com.peerlock.ui.onboarding.RoleSelectionScreen
 import com.peerlock.ui.stats.StatsScreen
 import com.peerlock.ui.settings.ApplyUnbindScreen
+import com.peerlock.ui.settings.LogScreen
 import com.peerlock.ui.settings.PairingInfoScreen
 import com.peerlock.ui.settings.RevokeDoScreen
 import com.peerlock.ui.settings.SettingsScreen
@@ -58,6 +62,7 @@ object Routes {
     const val APPLY_UNBIND = "apply_unbind"
     const val ALREADY_BOUND = "already_bound"
     const val DEVICE_OWNER_SETUP_SETTINGS = "device_owner_setup_settings"
+    const val LOG = "log"
 
     fun pairing(role: String) = "pairing/$role"
     fun pairingConfirm(role: String) = "pairing_confirm/$role"
@@ -253,6 +258,7 @@ fun PeerLockNavHost(
         }
 
         composable(Routes.SETTINGS) {
+            var l2Unlocked by remember { mutableStateOf(false) }
             SettingsScreen(
                 onBack = { navController.popBackStack() },
                 onNavigateToPairingInfo = { navController.navigate(Routes.PAIRING_INFO) },
@@ -264,6 +270,8 @@ fun PeerLockNavHost(
                 onNavigateToDeviceOwnerSetup = {
                     navController.navigate(Routes.DEVICE_OWNER_SETUP_SETTINGS)
                 },
+                onNavigateToLog = { navController.navigate("${Routes.LOG}?l2=$l2Unlocked") },
+                onL2UnlockedChange = { l2Unlocked = it },
             )
         }
 
@@ -283,6 +291,20 @@ fun PeerLockNavHost(
                         popUpTo(Routes.SETTINGS) { inclusive = true }
                     }
                 },
+            )
+        }
+
+        composable(
+            "${Routes.LOG}?l2={l2}",
+            arguments = listOf(navArgument("l2") {
+                type = NavType.BoolType
+                defaultValue = false
+            })
+        ) { backStackEntry ->
+            val l2 = backStackEntry.arguments?.getBoolean("l2") ?: false
+            LogScreen(
+                onBack = { navController.popBackStack() },
+                l2Unlocked = l2,
             )
         }
     }

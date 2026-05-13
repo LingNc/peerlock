@@ -462,6 +462,12 @@ digraph PeerLockUI {
             fillcolor="#FFCDD2",
             color="#E53935"
         ];
+
+        LOG [
+            label=<调试日志页<BR/><FONT POINT-SIZE="8" COLOR="#616161">启用调试日志 Switch<BR/>高级调试模式 Switch (L2解锁后可见)<BR/>级别过滤 ALL/V/D/I/W/E<BR/>日志列表 等级+Tag+内容<BR/>[刷新] [清除] [复制到剪贴板]</FONT>>,
+            fillcolor="#EDE7F6",
+            color="#5E35B1"
+        ];
     }
 
     // =====================================================================
@@ -561,6 +567,7 @@ digraph PeerLockUI {
     SET -> RS [label="切换角色\npopUpTo(0)", color="#5E35B1", fontcolor="#5E35B1"];
     SET -> DO1 [label="DO行→详情页\n(已设置: 取消DO)\n(未设置: ADB引导)", color="#C2185B"];
     SET -> PAIR_INFO [label="配对信息", color="#5E35B1"];
+    SET -> LOG [label="调试日志", color="#5E35B1"];
     SET -> BATTERY [label="电池未关闭时\n→ 引导对话框", color="#C2185B"];
 
     REVOKE_DO -> SET [label="撤销后返回"];

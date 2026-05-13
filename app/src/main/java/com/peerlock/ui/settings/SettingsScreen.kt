@@ -43,6 +43,8 @@ fun SettingsScreen(
     onNavigateToPairingInfo: () -> Unit = {},
     onNavigateToRoleSelection: () -> Unit = {},
     onNavigateToDeviceOwnerSetup: () -> Unit = {},
+    onNavigateToLog: () -> Unit = {},
+    onL2UnlockedChange: (Boolean) -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -62,6 +64,10 @@ fun SettingsScreen(
 
     LaunchedEffect(uiState.resetComplete) {
         if (uiState.resetComplete) onNavigateToRoleSelection()
+    }
+
+    LaunchedEffect(uiState.l2Unlocked) {
+        onL2UnlockedChange(uiState.l2Unlocked)
     }
 
     // 电池优化引导对话框
@@ -237,6 +243,14 @@ fun SettingsScreen(
                     Text("身份重置", color = MaterialTheme.colorScheme.error)
                 }
             }
+
+            // 调试日志
+            SettingItem(
+                label = "调试日志",
+                value = null,
+                enabled = true,
+                onClick = onNavigateToLog,
+            )
 
             // 版本号（连点7次解锁 L2 高级解除）
             Text(
