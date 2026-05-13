@@ -173,30 +173,32 @@ fun SettingsScreen(
 
             HorizontalDivider()
 
-            // 本机身份
-            SettingItem(
-                label = "本机身份",
-                value = null,
-                enabled = true,
-                onClick = onNavigateToIdentityInfo,
-            )
-
-            // 配对信息
-            SettingItem(
-                label = "配对信息",
-                value = null,
-                enabled = true,
-                onClick = onNavigateToPairingInfo,
-            )
-
-            // 设备选择（仅管控端）
-            if (uiState.role == "controller") {
+            // 本机身份（仅已配对时显示）
+            if (uiState.isPaired) {
                 SettingItem(
-                    label = "设备选择",
+                    label = "本机身份",
                     value = null,
                     enabled = true,
-                    onClick = onNavigateToDeviceSelection,
+                    onClick = onNavigateToIdentityInfo,
                 )
+
+                // 配对信息
+                SettingItem(
+                    label = "配对信息",
+                    value = null,
+                    enabled = true,
+                    onClick = onNavigateToPairingInfo,
+                )
+
+                // 设备选择（仅管控端）
+                if (uiState.role == "controller") {
+                    SettingItem(
+                        label = "设备选择",
+                        value = null,
+                        enabled = true,
+                        onClick = onNavigateToDeviceSelection,
+                    )
+                }
             }
 
             HorizontalDivider()
