@@ -2,7 +2,7 @@
 
 ## 概述
 
-V3-fix 后续修复 + 日志调试系统。涵盖 2 项问题修复和 1 项完整功能新增。
+V3-fix 后续修复 + 日志调试系统 + 本机身份信息。涵盖 5 项问题修复和 2 项功能新增。
 
 ---
 
@@ -96,6 +96,33 @@ ViewModel 逻辑：
 - 共用页面子图新增 `LOG` 节点（调试日志页）
 - 设置页 → 调试日志 连线
 
+### 9. 日志页状态持久化 + 默认启用
+
+**修改**: `ui/settings/LogViewModel.kt`, `ui/settings/LogScreen.kt`, `PeerLockApp.kt`
+
+- `enabled` / `advanced` 状态持久化到 `SharedPreferences("peerlock_debug")`
+- 默认 `enabled = true`（调试日志默认开启）
+- `l2Unlocked` 持久化为时间戳，5 分钟窗口内有效
+- `PeerLockApp.onCreate()` 读取持久化偏好恢复日志状态
+- LogScreen 的 `LaunchedEffect` 仅在 l2=true 时覆盖（不覆盖持久化的有效状态）
+
+### 10. 本机身份信息页
+
+**新建**: `ui/settings/IdentityInfoScreen.kt`, `ui/settings/IdentityInfoViewModel.kt`
+
+- 显示：设备型号、密钥曲线类型、身份指纹（公钥 SHA-256 前 4 字节 hex）
+- 指纹用于配对时核对对方身份
+- 重置身份：存在非归档会话（ACTIVE/WAITING/REVOKED）时可操作
+- 两段式确认：点击"重置身份"→ 10s 冷却 → "确认重置"→ 清除密钥对+配对数据+种子
+- 重置后导航到角色选择页
+
+### 11. 通知渠道修复 + DO 检查反馈
+
+**修改**: `system/adb/AdbPairingService.kt`, `system/service/PeerLockService.kt`, `ui/onboarding/DeviceOwnerSetupScreen.kt`
+
+- 通知渠道创建前先 `deleteNotificationChannel()` 删除旧渠道，确保重要性等级更新生效
+- DO 已设置时也显示 statusMessage（之前只在未设置分支显示）
+
 ---
 
 ## 提交记录
@@ -107,6 +134,10 @@ ViewModel 逻辑：
 | `45eccdb` | refactor: 全局替换 android.util.Log → PeerLockLogger |
 | `0bdb75d` | feat: 新增日志查看页面 LogScreen + LogViewModel |
 | `a6b5618` | feat: 日志系统集成 — 设置入口 + 导航路由 + DEV_DEBUG BuildConfig + 导航图 |
+| `275b599` | fix: 日志页状态持久化 + 默认启用调试日志 + l2Unlocked 5分钟窗口持久化 |
+| `c25884e` | feat: 新增本机身份信息页 — 公钥指纹+曲线类型+设备型号+重置身份 |
+| `ff293ec` | feat: 本机身份页集成 — 设置入口+导航路由+导航图更新 |
+| `de333da` | fix: 通知渠道删除旧渠道重建确保重要性生效 + DO检查状态反馈显示 |
 
 ---
 
@@ -119,6 +150,8 @@ ViewModel 逻辑：
 | `system/log/PeerLockLogger.kt` | 全局日志器（环形缓冲区 + 敏感过滤） |
 | `ui/settings/LogScreen.kt` | 日志查看 Compose UI |
 | `ui/settings/LogViewModel.kt` | 日志页 ViewModel |
+| `ui/settings/IdentityInfoScreen.kt` | 本机身份 Compose UI |
+| `ui/settings/IdentityInfoViewModel.kt` | 本机身份 ViewModel |
 
 ### 修改文件
 | 文件 | 变更 |
@@ -129,11 +162,12 @@ ViewModel 逻辑：
 | `system/receiver/BootReceiver.kt` | Log 替换 |
 | `data/db/DatabaseModule.kt` | Log 替换 |
 | `ui/onboarding/DeviceOwnerSetupViewModel.kt` | 移除未使用 Log import |
-| `ui/settings/SettingsScreen.kt` | 新增调试日志入口行 + onNavigateToLog 回调 |
+| `ui/onboarding/DeviceOwnerSetupScreen.kt` | DO 已设置时显示 statusMessage |
+| `ui/settings/SettingsScreen.kt` | 新增调试日志+本机身份入口行 |
 | `ui/navigation/PeerLockNavHost.kt` | LOG 路由 + LogScreen composable |
 | `app/build.gradle.kts` | BuildConfig + DEV_DEBUG 字段 |
-| `PeerLockApp.kt` | DEV_DEBUG 时自动启用日志 |
-| `docs/UI导航图.dot` | 新增日志页节点 |
+| `PeerLockApp.kt` | 读取持久化偏好恢复日志状态 |
+| `docs/UI导航图.dot` | 新增日志页+本机身份页节点 |
 
 ---
 
