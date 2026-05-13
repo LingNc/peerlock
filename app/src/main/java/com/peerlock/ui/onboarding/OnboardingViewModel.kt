@@ -92,7 +92,6 @@ class OnboardingViewModel @Inject constructor(
                 val response = pairingProtocol.processPairRequest(request, deviceName)
                 _uiState.value = _uiState.value.copy(
                     pairResponseQr = json.encodeToString(PairingResponse.serializer(), response),
-                    step = OnboardingStep.SCAN_PEER_QR,
                     isLoading = false,
                 )
             } catch (e: Exception) {

@@ -143,42 +143,64 @@ fun PairingScreen(
                             }
                         }
                     } else {
-                        Text("请扫描被控端的二维码", style = MaterialTheme.typography.titleMedium)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            "扫描后将生成响应二维码供被控端扫描",
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        OutlinedButton(onClick = { showScanner = true }) {
-                            Text("扫描二维码")
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        if (!showPasteInput) {
-                            OutlinedButton(onClick = { showPasteInput = true }) {
-                                Text("粘贴配对数据")
+                        // 管控端
+                        if (uiState.pairResponseQr.isEmpty()) {
+                            // 尚未扫描请求 — 显示扫描/粘贴入口
+                            Text("请扫描被控端的二维码", style = MaterialTheme.typography.titleMedium)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                "扫描后将生成响应二维码供被控端扫描",
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            OutlinedButton(onClick = { showScanner = true }) {
+                                Text("扫描二维码")
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            if (!showPasteInput) {
+                                OutlinedButton(onClick = { showPasteInput = true }) {
+                                    Text("粘贴配对数据")
+                                }
+                            } else {
+                                OutlinedTextField(
+                                    value = pasteText,
+                                    onValueChange = { pasteText = it },
+                                    label = { Text("粘贴被控端的配对数据") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    minLines = 2,
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = {
+                                        if (pasteText.isNotBlank()) {
+                                            viewModel.onQrScanned(pasteText.trim())
+                                            showPasteInput = false
+                                            pasteText = ""
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text("确认")
+                                }
                             }
                         } else {
-                            OutlinedTextField(
-                                value = pasteText,
-                                onValueChange = { pasteText = it },
-                                label = { Text("粘贴被控端的配对数据") },
-                                modifier = Modifier.fillMaxWidth(),
-                                minLines = 2,
-                            )
+                            // 已处理请求 — 显示响应QR + 完成配对
+                            Text("请让被控端扫描此响应码", style = MaterialTheme.typography.titleMedium)
+                            Spacer(modifier = Modifier.height(24.dp))
+                            QrCodeDisplay(content = uiState.pairResponseQr)
                             Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(onClick = {
+                                clipboardManager.setText(AnnotatedString(uiState.pairResponseQr))
+                            }) {
+                                Text("复制响应数据")
+                            }
+                            Spacer(modifier = Modifier.height(24.dp))
                             Button(
-                                onClick = {
-                                    if (pasteText.isNotBlank()) {
-                                        viewModel.onQrScanned(pasteText.trim())
-                                        showPasteInput = false
-                                        pasteText = ""
-                                    }
-                                },
+                                onClick = { onPairingComplete() },
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Text("确认")
+                                Text("完成配对")
                             }
                         }
                     }
