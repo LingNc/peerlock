@@ -284,6 +284,9 @@ class AdbPairingService : Service() {
     }
 
     private fun createNotificationChannel() {
+        val manager = getSystemService(NotificationManager::class.java)
+        // 删除旧渠道以确保重要性等级更新生效
+        manager.deleteNotificationChannel(CHANNEL_ID)
         val channel = NotificationChannel(
             CHANNEL_ID,
             "ADB 配对",
@@ -292,7 +295,6 @@ class AdbPairingService : Service() {
             description = "ADB 无线调试配对通知"
             enableVibration(true)
         }
-        val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(channel)
     }
 

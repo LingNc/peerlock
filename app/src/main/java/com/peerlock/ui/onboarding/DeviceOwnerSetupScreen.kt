@@ -150,6 +150,14 @@ private fun DeviceOwnerStep(
                     modifier = Modifier.padding(16.dp),
                 )
                 Text("Device Owner 已设置", style = MaterialTheme.typography.titleMedium)
+                uiState.statusMessage?.let { msg ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = msg,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(onClick = onDoComplete, modifier = Modifier.fillMaxWidth()) {
                     Text("继续")

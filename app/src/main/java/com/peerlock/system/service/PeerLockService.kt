@@ -167,6 +167,8 @@ class PeerLockService : Service() {
     }
 
     private fun createNotificationChannel() {
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.deleteNotificationChannel(CHANNEL_ID)
         val channel = NotificationChannel(
             CHANNEL_ID,
             "PeerLock 服务",
@@ -175,7 +177,6 @@ class PeerLockService : Service() {
             description = "PeerLock 后台运行通知"
             setShowBadge(false)
         }
-        val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(channel)
     }
 
