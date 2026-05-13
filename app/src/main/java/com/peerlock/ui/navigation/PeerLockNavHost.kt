@@ -274,6 +274,7 @@ fun PeerLockNavHost(
                 },
                 onNavigateToLog = { navController.navigate("${Routes.LOG}?l2=$l2Unlocked") },
                 onNavigateToIdentityInfo = { navController.navigate(Routes.IDENTITY_INFO) },
+                onNavigateToDeviceSelection = { navController.navigate(Routes.DEVICE_SELECTION) },
                 onL2UnlockedChange = { l2Unlocked = it },
             )
         }

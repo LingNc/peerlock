@@ -81,8 +81,9 @@ class EmergencyManagerImpl(
         return true
     }
 
-    private fun clearCryptoMaterial() {
+    private suspend fun clearCryptoMaterial() {
         securePrefs.clearPairingData()
+        seedManager.clearSeeds()
     }
 
     companion object {

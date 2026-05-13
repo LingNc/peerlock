@@ -45,6 +45,7 @@ fun SettingsScreen(
     onNavigateToDeviceOwnerSetup: () -> Unit = {},
     onNavigateToLog: () -> Unit = {},
     onNavigateToIdentityInfo: () -> Unit = {},
+    onNavigateToDeviceSelection: () -> Unit = {},
     onL2UnlockedChange: (Boolean) -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -187,6 +188,16 @@ fun SettingsScreen(
                 enabled = true,
                 onClick = onNavigateToPairingInfo,
             )
+
+            // 设备选择（仅管控端）
+            if (uiState.role == "controller") {
+                SettingItem(
+                    label = "设备选择",
+                    value = null,
+                    enabled = true,
+                    onClick = onNavigateToDeviceSelection,
+                )
+            }
 
             HorizontalDivider()
 
