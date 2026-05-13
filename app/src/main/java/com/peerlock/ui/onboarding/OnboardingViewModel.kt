@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
 data class OnboardingUiState(
@@ -49,6 +50,8 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
+    private val json = Json { ignoreUnknownKeys = true }
+
     private fun generatePairRequest() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
@@ -56,7 +59,7 @@ class OnboardingViewModel @Inject constructor(
                 val request = pairingProtocol.generatePairRequest(deviceName)
                 _uiState.value = _uiState.value.copy(
                     pairRequest = request,
-                    pairRequestQr = request.pub,
+                    pairRequestQr = json.encodeToString(PairingRequest.serializer(), request),
                     isLoading = false,
                 )
             } catch (e: Exception) {
@@ -76,18 +79,19 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
-    private fun handleControllerScan(scannedPubKey: String) {
+    private fun handleControllerScan(scannedData: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                val request = PairingRequest(
-                    id = "",
-                    pub = scannedPubKey,
-                    name = deviceName,
-                )
+                // 尝试解析为完整 JSON PairingRequest，向后兼容仅公钥格式
+                val request = try {
+                    json.decodeFromString(PairingRequest.serializer(), scannedData)
+                } catch (_: Exception) {
+                    PairingRequest(id = "", pub = scannedData, name = deviceName)
+                }
                 val response = pairingProtocol.processPairRequest(request, deviceName)
                 _uiState.value = _uiState.value.copy(
-                    pairResponseQr = response.data,
+                    pairResponseQr = json.encodeToString(PairingResponse.serializer(), response),
                     step = OnboardingStep.SCAN_PEER_QR,
                     isLoading = false,
                 )
@@ -100,15 +104,16 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
-    private fun handleControlledScan(scannedResponse: String) {
+    private fun handleControlledScan(scannedData: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                val response = PairingResponse(
-                    pub = "",
-                    signPub = "",
-                    data = scannedResponse,
-                )
+                // 尝试解析为完整 JSON PairingResponse，向后兼容仅信封格式
+                val response = try {
+                    json.decodeFromString(PairingResponse.serializer(), scannedData)
+                } catch (_: Exception) {
+                    PairingResponse(pub = "", signPub = "", data = scannedData)
+                }
                 val result = pairingProtocol.processPairResponse(response)
                 when (result) {
                     is PairingResult.Success -> {

@@ -17,4 +17,5 @@ data class PairingSessionEntity(
     val createdAt: Long,
     val revokedAt: Long? = null,
     val archivedAt: Long? = null,
+    val peerCurve: String = "secp256r1",  // 对端 ECDH 公钥曲线
 )

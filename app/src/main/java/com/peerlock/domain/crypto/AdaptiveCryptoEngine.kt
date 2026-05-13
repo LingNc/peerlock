@@ -15,8 +15,8 @@ class AdaptiveCryptoEngine(
         if (apiLevel >= 33) X25519CryptoEngine() else P256CryptoEngine()
     }
 
-    val curveName: String
-        get() = if (apiLevel >= 33) "X25519" else "secp256r1"
+    override val curveName: String
+        get() = delegate.curveName
 
     override suspend fun generateKeyPair(): CryptoKeyPair = delegate.generateKeyPair()
     override suspend fun encrypt(data: ByteArray, peerPublicKey: ByteArray): ByteArray =

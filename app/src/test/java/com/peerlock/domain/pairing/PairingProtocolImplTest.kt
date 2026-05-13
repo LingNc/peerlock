@@ -83,13 +83,13 @@ class PairingProtocolImplTest {
             KeyType.DESTROY to ByteArray(20) { 3 },
         )
         coEvery { controllerRepo.getMyPublicKey() } returns null
-        coEvery { controllerRepo.createSession(any(), any(), any(), any(), any(), any(), any()) } returns mockk(relaxed = true)
+        coEvery { controllerRepo.createSession(any(), any(), any(), any(), any(), any(), any(), any()) } returns mockk(relaxed = true)
         val response = controllerProtocol.processPairRequest(request, "Galaxy S24")
 
         // 被控端处理响应
         coEvery { controlledRepo.getSessionId() } returns request.id
         coEvery { controlledRepo.getMyPublicKey() } returns ByteArray(32) { it.toByte() }
-        coEvery { controlledRepo.createSession(any(), any(), any(), any(), any(), any(), any()) } returns mockk(relaxed = true)
+        coEvery { controlledRepo.createSession(any(), any(), any(), any(), any(), any(), any(), any()) } returns mockk(relaxed = true)
         val result = controlledProtocol.processPairResponse(response)
 
         assertTrue(result is PairingResult.Success, "配对应成功，实际: $result")
@@ -108,7 +108,7 @@ class PairingProtocolImplTest {
             KeyType.DESTROY to ByteArray(20) { 3 },
         )
         coEvery { controllerRepo.getMyPublicKey() } returns null
-        coEvery { controllerRepo.createSession(any(), any(), any(), any(), any(), any(), any()) } returns mockk(relaxed = true)
+        coEvery { controllerRepo.createSession(any(), any(), any(), any(), any(), any(), any(), any()) } returns mockk(relaxed = true)
         val response = controllerProtocol.processPairRequest(request, "Galaxy S24")
 
         // 篡改 data
@@ -131,7 +131,7 @@ class PairingProtocolImplTest {
             KeyType.DESTROY to ByteArray(20) { 3 },
         )
         coEvery { controllerRepo.getMyPublicKey() } returns null
-        coEvery { controllerRepo.createSession(any(), any(), any(), any(), any(), any(), any()) } returns mockk(relaxed = true)
+        coEvery { controllerRepo.createSession(any(), any(), any(), any(), any(), any(), any(), any()) } returns mockk(relaxed = true)
         val response = controllerProtocol.processPairRequest(request, "Galaxy S24")
 
         // 返回错误的会话 ID

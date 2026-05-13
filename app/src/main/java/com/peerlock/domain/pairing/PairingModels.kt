@@ -15,6 +15,7 @@ data class PairingRequest(
     val pub: String,             // Base64 编码的 ECC 公钥
     val name: String,            // 设备标识（MANUFACTURER + MODEL）
     val exp: Long = 0L,          // 过期时间（epoch 秒），0 = 不过期
+    val curve: String = "secp256r1",  // 公钥曲线类型："secp256r1" / "X25519"
 )
 
 /**
@@ -28,6 +29,7 @@ data class PairingResponse(
     val pub: String,             // Base64(控制端 ECDH 公钥)，用于解密
     val signPub: String,         // Base64(控制端签名公钥)，用于验证签名
     val data: String,            // Base64(加密信封)
+    val curve: String = "secp256r1",  // 公钥曲线类型
 )
 
 /**

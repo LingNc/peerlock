@@ -18,7 +18,7 @@ import com.peerlock.data.db.entity.*
         AuditLogEntity::class,
         PairingSessionEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -51,5 +51,11 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
             )
             """.trimIndent()
         )
+    }
+}
+
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE pairing_sessions ADD COLUMN peerCurve TEXT NOT NULL DEFAULT 'secp256r1'")
     }
 }

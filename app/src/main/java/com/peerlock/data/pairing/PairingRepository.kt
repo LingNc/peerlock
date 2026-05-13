@@ -29,6 +29,7 @@ interface PairingRepository {
         myPublicKey: ByteArray,
         signingPublicKey: ByteArray?,
         identityFingerprint: String,
+        peerCurve: String = "secp256r1",
     ): PairingSessionEntity
 
     suspend fun updateSessionStatus(sessionId: String, status: String)

@@ -4,6 +4,7 @@ import com.peerlock.data.pairing.PairingRepository
 import com.peerlock.data.seed.SeedManager
 import com.peerlock.domain.crypto.CryptoEngine
 import com.peerlock.domain.crypto.CryptoKeyPair
+import com.peerlock.domain.crypto.createCryptoEngineForCurve
 import com.peerlock.domain.totp.KeyType
 import com.peerlock.domain.totp.TotpEngine
 import kotlinx.serialization.json.Json
@@ -34,7 +35,8 @@ class PairingProtocolImpl(
             id = sessionId,
             pub = encodeBase64(keyPair.publicKey),
             name = deviceName,
-            exp = System.currentTimeMillis() / 1000 + 300L,  // 5 分钟过期
+            exp = System.currentTimeMillis() / 1000 + 300L,
+            curve = cryptoEngine.curveName,
         )
     }
 
@@ -42,7 +44,6 @@ class PairingProtocolImpl(
         request: PairingRequest,
         controllerName: String,
     ): PairingResponse {
-        // 检查过期时间
         if (request.exp > 0) {
             val nowSeconds = System.currentTimeMillis() / 1000
             if (nowSeconds > request.exp) {
@@ -52,7 +53,6 @@ class PairingProtocolImpl(
 
         val peerPublicKey = decodeBase64(request.pub)
 
-        // 防止自绑定：检查对方公钥是否就是自己的公钥
         val myExistingPub = pairingRepository.getMyPublicKey()
         if (myExistingPub != null && peerPublicKey.contentEquals(myExistingPub)) {
             throw IllegalStateException("不能与自己配对")
@@ -60,54 +60,58 @@ class PairingProtocolImpl(
 
         val seeds = seedManager.generateSeeds()
 
-        val keyPair = cryptoEngine.generateKeyPair()
-        myKeyPair = keyPair
+        // 使用对方曲线引擎生成 ECDH 密钥对（用于与对方 ECDH 公钥协商）
+        val peerCurve = request.curve
+        val peerEngine = createCryptoEngineForCurve(peerCurve)
+        val peerCurveKeyPair = peerEngine.generateKeyPair()
+
+        // 用自身引擎生成签名密钥对
+        val signKeyPair = cryptoEngine.generateKeyPair()
+        myKeyPair = signKeyPair
 
         val payload = PairingPayload(
             id = request.id,
             seeds = seeds.mapKeys { it.key.name.lowercase() }
                 .mapValues { encodeBase64(it.value) },
-            pub = encodeBase64(keyPair.publicKey),
+            pub = encodeBase64(peerCurveKeyPair.publicKey),
             name = controllerName,
         )
 
         val plaintext = json.encodeToString(PairingPayload.serializer(), payload).toByteArray()
-        val ciphertext = cryptoEngine.encrypt(plaintext, peerPublicKey)
+        val ciphertext = peerEngine.encrypt(plaintext, peerPublicKey)
 
-        // 提取 IV（前 12 字节）和实际密文
         val iv = ciphertext.sliceArray(0 until 12)
         val actualCiphertext = ciphertext.sliceArray(12 until ciphertext.size)
 
-        // 签名覆盖 iv + ciphertext
         val toSign = iv + actualCiphertext
         val signature = cryptoEngine.sign(toSign)
 
         val envelope = EnvelopeCodec.encode(actualCiphertext, iv, signature)
         val envelopeBase64 = encodeBase64(envelope)
 
-        // 存储本地状态
-        pairingRepository.storeMyPublicKey(keyPair.publicKey)
+        pairingRepository.storeMyPublicKey(signKeyPair.publicKey)
         pairingRepository.storePeerPublicKey(peerPublicKey)
         pairingRepository.storeSessionId(request.id)
         pairingRepository.storeRole("controller")
         seedManager.storeSeeds(seeds)
 
-        // 写入 Room
         val fingerprint = computeFingerprint(peerPublicKey)
         pairingRepository.createSession(
             sessionId = request.id,
             role = "controller",
             peerDeviceName = request.name,
             peerPublicKey = peerPublicKey,
-            myPublicKey = keyPair.publicKey,
-            signingPublicKey = keyPair.signingPublicKey,
+            myPublicKey = peerCurveKeyPair.publicKey,
+            signingPublicKey = signKeyPair.signingPublicKey,
             identityFingerprint = fingerprint,
+            peerCurve = peerCurve,
         )
 
         return PairingResponse(
-            pub = encodeBase64(keyPair.publicKey),
-            signPub = encodeBase64(keyPair.signingPublicKey),
+            pub = encodeBase64(peerCurveKeyPair.publicKey),
+            signPub = encodeBase64(signKeyPair.signingPublicKey),
             data = envelopeBase64,
+            curve = cryptoEngine.curveName,
         )
     }
 
@@ -118,45 +122,44 @@ class PairingProtocolImpl(
             val controllerEcdhPubKey = decodeBase64(response.pub)
             val controllerSignPubKey = decodeBase64(response.signPub)
 
-            // 防止自绑定：检查对方公钥是否就是自己的公钥
             val myExistingPub = pairingRepository.getMyPublicKey()
             if (myExistingPub != null && controllerEcdhPubKey.contentEquals(myExistingPub)) {
                 return PairingResult.Error("不能与自己配对")
             }
 
+            // 使用对方曲线引擎进行签名验证
+            val peerCurve = response.curve
+            val verifyEngine = createCryptoEngineForCurve(peerCurve)
+
+            // 解密使用自身引擎（持有自身曲线的私钥，对方加密时使用了本方曲线）
+            val decryptEngine = cryptoEngine
+
             val envelope = decodeBase64(response.data)
             val (actualCiphertext, iv, signature) = EnvelopeCodec.decode(envelope)
 
-            // 验证签名（覆盖 iv + ciphertext）
             val toVerify = iv + actualCiphertext
-            if (!cryptoEngine.verify(toVerify, signature, controllerSignPubKey)) {
+            if (!verifyEngine.verify(toVerify, signature, controllerSignPubKey)) {
                 return PairingResult.Error("签名验证失败，数据可能被篡改")
             }
 
-            // 解密：还原为 encrypt() 的输出格式（iv + ciphertext）
             val encryptedData = iv + actualCiphertext
-            val plaintext = cryptoEngine.decryptWithPeer(encryptedData, controllerEcdhPubKey)
+            val plaintext = decryptEngine.decryptWithPeer(encryptedData, controllerEcdhPubKey)
 
             val payloadString = plaintext.toString(Charsets.UTF_8)
             val payload = json.decodeFromString(PairingPayload.serializer(), payloadString)
 
-            // 验证会话 ID
             if (!storedSessionId.isNullOrBlank() && payload.id != storedSessionId) {
                 return PairingResult.Error("会话 ID 不匹配")
             }
 
-            // 存储种子
             val seeds = payload.seeds.mapKeys { KeyType.fromTotpId(it.key) }
                 .mapValues { decodeBase64(it.value) }
             seedManager.storeSeeds(seeds)
 
-            // 存储对方公钥
             pairingRepository.storePeerPublicKey(controllerEcdhPubKey)
 
-            // 标记配对完成
             pairingRepository.markPaired()
 
-            // 写入 Room
             val myPub = pairingRepository.getMyPublicKey()
             val fingerprint = computeFingerprint(controllerEcdhPubKey)
             pairingRepository.createSession(
@@ -167,9 +170,9 @@ class PairingProtocolImpl(
                 myPublicKey = myPub ?: ByteArray(0),
                 signingPublicKey = controllerSignPubKey,
                 identityFingerprint = fingerprint,
+                peerCurve = peerCurve,
             )
 
-            // 清除内存中的明文种子
             seeds.values.forEach { it.fill(0) }
 
             PairingResult.Success(

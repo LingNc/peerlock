@@ -60,6 +60,7 @@ class PairingRepositoryImpl(
         myPublicKey: ByteArray,
         signingPublicKey: ByteArray?,
         identityFingerprint: String,
+        peerCurve: String,
     ): PairingSessionEntity {
         val entity = PairingSessionEntity(
             sessionId = sessionId,
@@ -72,6 +73,7 @@ class PairingRepositoryImpl(
             status = "ACTIVE",
             identityFingerprint = identityFingerprint,
             createdAt = System.currentTimeMillis(),
+            peerCurve = peerCurve,
         )
         pairingSessionDao.insert(entity)
         return entity

@@ -19,8 +19,14 @@ import javax.crypto.spec.SecretKeySpec
  */
 class P256CryptoEngine : CryptoEngine {
 
+    override val curveName: String = "secp256r1"
     private var keyPair: KeyPair? = null
-    private var ecParamSpec: ECParameterSpec? = null
+    private val ecParamSpec: ECParameterSpec by lazy {
+        // 预加载标准 P-256 参数，确保 verify/decrypt 不依赖 generateKeyPair
+        val kpg = KeyPairGenerator.getInstance("EC")
+        kpg.initialize(ECGenParameterSpec(EC_CURVE))
+        (kpg.generateKeyPair().public as java.security.interfaces.ECPublicKey).params
+    }
 
     companion object {
         private const val EC_CURVE = "secp256r1"
@@ -37,7 +43,6 @@ class P256CryptoEngine : CryptoEngine {
         kpg.initialize(ECGenParameterSpec(EC_CURVE))
         val kp = kpg.generateKeyPair()
         this.keyPair = kp
-        this.ecParamSpec = (kp.public as java.security.interfaces.ECPublicKey).params
 
         return CryptoKeyPair(
             publicKey = toRawPublicKey(kp.public),
@@ -123,9 +128,8 @@ class P256CryptoEngine : CryptoEngine {
         }
         val x = BigInteger(1, raw.sliceArray(1 until 1 + COORD_SIZE))
         val y = BigInteger(1, raw.sliceArray(1 + COORD_SIZE until RAW_KEY_SIZE))
-        val params = ecParamSpec ?: throw IllegalStateException("尚未生成密钥对")
         return KeyFactory.getInstance("EC")
-            .generatePublic(ECPublicKeySpec(ECPoint(x, y), params))
+            .generatePublic(ECPublicKeySpec(ECPoint(x, y), ecParamSpec))
     }
 
     private fun bigIntToFixedBytes(value: BigInteger, length: Int): ByteArray {

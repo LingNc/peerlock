@@ -1,6 +1,7 @@
 package com.peerlock.domain.crypto
 
 interface CryptoEngine {
+    val curveName: String
     suspend fun generateKeyPair(): CryptoKeyPair
     suspend fun encrypt(data: ByteArray, peerPublicKey: ByteArray): ByteArray
     suspend fun decrypt(data: ByteArray): ByteArray
@@ -24,4 +25,9 @@ data class CryptoKeyPair(
     }
     override fun hashCode(): Int =
         31 * (31 * publicKey.contentHashCode() + signingPublicKey.contentHashCode()) + privateKeyAlias.hashCode()
+}
+
+fun createCryptoEngineForCurve(curve: String): CryptoEngine = when (curve) {
+    "X25519" -> X25519CryptoEngine()
+    else -> P256CryptoEngine()
 }

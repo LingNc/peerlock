@@ -22,6 +22,7 @@ import javax.crypto.spec.SecretKeySpec
  */
 class X25519CryptoEngine : CryptoEngine {
 
+    override val curveName: String = "X25519"
     private var x25519PrivateKey: X25519PrivateKeyParameters? = null
     private var edPrivateKey: Ed25519PrivateKeyParameters? = null
     private var edPublicKey: Ed25519PublicKeyParameters? = null
