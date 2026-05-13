@@ -204,7 +204,7 @@ fun PairingInfoScreen(
                             )
                         }
                     }
-                } else if (uiState.role == "controlled") {
+                } else {
                     item {
                         TextButton(
                             onClick = onNavigateToApplyUnbind,
