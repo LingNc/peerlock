@@ -63,6 +63,7 @@ class PairingProtocolImplTest {
             KeyType.UNLOCK to ByteArray(20) { 2 },
             KeyType.DESTROY to ByteArray(20) { 3 },
         )
+        coEvery { controllerRepo.getMyPublicKey() } returns null
 
         val request = controlledProtocol.generatePairRequest("Pixel 7")
         val response = controllerProtocol.processPairRequest(request, "Galaxy S24")
@@ -81,6 +82,8 @@ class PairingProtocolImplTest {
             KeyType.UNLOCK to ByteArray(20) { 2 },
             KeyType.DESTROY to ByteArray(20) { 3 },
         )
+        coEvery { controllerRepo.getMyPublicKey() } returns null
+        coEvery { controllerRepo.createSession(any(), any(), any(), any(), any(), any(), any()) } returns mockk(relaxed = true)
         val response = controllerProtocol.processPairRequest(request, "Galaxy S24")
 
         // 被控端处理响应
@@ -104,12 +107,15 @@ class PairingProtocolImplTest {
             KeyType.UNLOCK to ByteArray(20) { 2 },
             KeyType.DESTROY to ByteArray(20) { 3 },
         )
+        coEvery { controllerRepo.getMyPublicKey() } returns null
+        coEvery { controllerRepo.createSession(any(), any(), any(), any(), any(), any(), any()) } returns mockk(relaxed = true)
         val response = controllerProtocol.processPairRequest(request, "Galaxy S24")
 
         // 篡改 data
         val tamperedResponse = PairingResponse(pub = response.pub, signPub = response.signPub, data = response.data + "X")
 
         coEvery { controlledRepo.getSessionId() } returns request.id
+        coEvery { controlledRepo.getMyPublicKey() } returns ByteArray(32) { it.toByte() }
         val result = controlledProtocol.processPairResponse(tamperedResponse)
 
         assertTrue(result is PairingResult.Error, "篡改后配对应失败")
@@ -124,10 +130,13 @@ class PairingProtocolImplTest {
             KeyType.UNLOCK to ByteArray(20) { 2 },
             KeyType.DESTROY to ByteArray(20) { 3 },
         )
+        coEvery { controllerRepo.getMyPublicKey() } returns null
+        coEvery { controllerRepo.createSession(any(), any(), any(), any(), any(), any(), any()) } returns mockk(relaxed = true)
         val response = controllerProtocol.processPairRequest(request, "Galaxy S24")
 
         // 返回错误的会话 ID
         coEvery { controlledRepo.getSessionId() } returns "wrong-session-id"
+        coEvery { controlledRepo.getMyPublicKey() } returns ByteArray(32) { it.toByte() }
         val result = controlledProtocol.processPairResponse(response)
 
         assertTrue(result is PairingResult.Error)

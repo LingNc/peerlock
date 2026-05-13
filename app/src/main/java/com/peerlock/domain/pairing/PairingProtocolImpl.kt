@@ -52,6 +52,12 @@ class PairingProtocolImpl(
 
         val peerPublicKey = decodeBase64(request.pub)
 
+        // 防止自绑定：检查对方公钥是否就是自己的公钥
+        val myExistingPub = pairingRepository.getMyPublicKey()
+        if (myExistingPub != null && peerPublicKey.contentEquals(myExistingPub)) {
+            throw IllegalStateException("不能与自己配对")
+        }
+
         val seeds = seedManager.generateSeeds()
 
         val keyPair = cryptoEngine.generateKeyPair()
@@ -111,6 +117,12 @@ class PairingProtocolImpl(
         return try {
             val controllerEcdhPubKey = decodeBase64(response.pub)
             val controllerSignPubKey = decodeBase64(response.signPub)
+
+            // 防止自绑定：检查对方公钥是否就是自己的公钥
+            val myExistingPub = pairingRepository.getMyPublicKey()
+            if (myExistingPub != null && controllerEcdhPubKey.contentEquals(myExistingPub)) {
+                return PairingResult.Error("不能与自己配对")
+            }
 
             val envelope = decodeBase64(response.data)
             val (actualCiphertext, iv, signature) = EnvelopeCodec.decode(envelope)
