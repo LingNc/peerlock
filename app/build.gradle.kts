@@ -85,6 +85,7 @@ dependencies {
 
     // Bouncy Castle
     implementation(libs.bouncycastle)
+    implementation(libs.bouncycastle.pkix)
 
     // ZXing
     implementation(libs.zxing.core)

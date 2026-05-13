@@ -10,19 +10,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -73,6 +81,10 @@ fun DeviceOwnerSetupScreen(
             onBack = onBack,
             onNavigateToRevokeDo = onNavigateToRevokeDo,
             showSkip = showSkip,
+            onStartAutoSetup = { viewModel.startAutoSetup() },
+            onStopAutoSetup = { viewModel.stopAutoSetup() },
+            onPairingCodeEntered = { viewModel.onPairingCodeEntered(it) },
+            onDismissPairingDialog = { viewModel.dismissPairingCodeDialog() },
         )
         SetupPhase.BATTERY_OPTIMIZATION -> BatteryOptimizationStep(
             isExempt = uiState.isBatteryExempt,
@@ -107,7 +119,50 @@ private fun DeviceOwnerStep(
     onBack: () -> Unit,
     onNavigateToRevokeDo: () -> Unit = {},
     showSkip: Boolean = true,
+    onStartAutoSetup: () -> Unit = {},
+    onStopAutoSetup: () -> Unit = {},
+    onPairingCodeEntered: (String) -> Unit = {},
+    onDismissPairingDialog: () -> Unit = {},
 ) {
+    // 配对码输入对话框
+    if (uiState.showPairingCodeDialog) {
+        var pairingCode by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = onDismissPairingDialog,
+            title = { Text("输入配对码") },
+            text = {
+                Column {
+                    Text("请在「设置 → 开发者选项 → 无线调试 → 使用配对码配对设备」中查看配对码。")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = pairingCode,
+                        onValueChange = { pairingCode = it.filter { c -> c.isDigit() } },
+                        label = { Text("配对码") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (uiState.pairingPort > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "端口: ${uiState.pairingPort}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { onPairingCodeEntered(pairingCode) },
+                    enabled = pairingCode.length >= 6,
+                ) { Text("配对") }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissPairingDialog) { Text("取消") }
+            },
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -152,29 +207,90 @@ private fun DeviceOwnerStep(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 无线 ADB 配对引导（Android 11+）
+                // 一键设置按钮（Android 11+）
+                if (supportsWirelessAdb) {
+                    when (uiState.autoSetupState) {
+                        AutoSetupState.IDLE -> {
+                            Button(
+                                onClick = onStartAutoSetup,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("一键设置 Device Owner")
+                            }
+                            Text(
+                                text = "需要先在开发者选项中开启「无线调试」",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                        AutoSetupState.DISCOVERING, AutoSetupState.FOUND,
+                        AutoSetupState.PAIRING, AutoSetupState.PAIRED -> {
+                            CircularProgressIndicator(modifier = Modifier.padding(8.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = uiState.autoSetupMessage ?: "",
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedButton(onClick = onStopAutoSetup, modifier = Modifier.fillMaxWidth()) {
+                                Text("取消")
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                        AutoSetupState.SUCCESS -> {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(8.dp),
+                            )
+                            Text(
+                                text = uiState.autoSetupMessage ?: "设置成功",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                        AutoSetupState.ERROR -> {
+                            Text(
+                                text = uiState.autoSetupMessage ?: "设置失败",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = onStartAutoSetup,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text("重试") }
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                    }
+                }
+
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 手动 ADB 方式（折叠）
                 if (supportsWirelessAdb && !uiState.showWirelessGuide) {
                     OutlinedButton(
                         onClick = onToggleGuide,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("使用无线 ADB 配对（无需电脑）")
+                        Text("手动 ADB 命令设置")
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
                 if (uiState.showWirelessGuide) {
-                    Text(
-                        text = "无线 ADB 配对步骤：",
-                        style = MaterialTheme.typography.titleSmall,
-                    )
+                    Text(text = "手动 ADB 步骤：", style = MaterialTheme.typography.titleSmall)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "1. 进入「设置 → 开发者选项 → 无线调试」", style = MaterialTheme.typography.bodyMedium)
-                    Text(text = "2. 点击「使用配对码配对设备」", style = MaterialTheme.typography.bodyMedium)
-                    Text(text = "3. 记下显示的配对码和 IP:端口", style = MaterialTheme.typography.bodyMedium)
-                    Text(text = "4. 在电脑终端执行：adb pair <IP:端口>", style = MaterialTheme.typography.bodyMedium)
-                    Text(text = "5. 输入配对码完成配对", style = MaterialTheme.typography.bodyMedium)
-                    Text(text = "6. 然后执行以下命令设置 Device Owner：", style = MaterialTheme.typography.bodyMedium)
+                    Text(text = "1. 在电脑终端执行: adb pair <IP:端口>", style = MaterialTheme.typography.bodyMedium)
+                    Text(text = "2. 输入配对码完成配对", style = MaterialTheme.typography.bodyMedium)
+                    Text(text = "3. 然后执行以下命令设置 Device Owner：", style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = adbCommand,
@@ -184,18 +300,13 @@ private fun DeviceOwnerStep(
                     Button(
                         onClick = { clipboardManager.setText(AnnotatedString(adbCommand)) },
                         modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("复制命令")
-                    }
+                    ) { Text("复制命令") }
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = onToggleGuide,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
+                    OutlinedButton(onClick = onToggleGuide, modifier = Modifier.fillMaxWidth()) {
                         Text("收起")
                     }
-                } else {
-                    // 传统 USB ADB 方式
+                } else if (!supportsWirelessAdb) {
+                    // Android 10 及以下：USB ADB
                     Text(
                         text = "请在电脑上执行以下命令（设备需已通过 USB 连接且未添加任何账户）：",
                         style = MaterialTheme.typography.bodyMedium,
@@ -210,9 +321,7 @@ private fun DeviceOwnerStep(
                     Button(
                         onClick = { clipboardManager.setText(AnnotatedString(adbCommand)) },
                         modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("复制命令")
-                    }
+                    ) { Text("复制命令") }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
