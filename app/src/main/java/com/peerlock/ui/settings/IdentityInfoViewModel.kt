@@ -50,7 +50,7 @@ class IdentityInfoViewModel @Inject constructor(
                 fingerprint = fingerprint,
                 curveType = cryptoEngine.curveName,
                 deviceName = android.os.Build.MODEL,
-                canReset = sessions.isNotEmpty(),
+                canReset = sessions.none { it.status == "ACTIVE" },
             )
         } catch (e: Exception) {
             _uiState.value = IdentityInfoUiState(
