@@ -1,7 +1,9 @@
 package com.peerlock.ui.common
 
+import android.Manifest
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraControl
@@ -16,7 +18,6 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,7 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -53,7 +55,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.zxing.BinaryBitmap
-import com.google.zxing.DecodeHintType
 import com.google.zxing.MultiFormatReader
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.RGBLuminanceSource
@@ -71,6 +72,29 @@ fun QrScannerScreen(
     var cameraControl by remember { mutableStateOf<CameraControl?>(null) }
     var zoomLevel by remember { mutableFloatStateOf(1f) }
     var hasResult by remember { mutableStateOf(false) }
+    var hasCameraPermission by remember { mutableStateOf(false) }
+
+    // 请求摄像头权限
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasCameraPermission = granted
+        if (!granted) {
+            Toast.makeText(context, "需要摄像头权限才能扫描二维码", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 首次进入时请求权限
+    LaunchedEffect(Unit) {
+        val granted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.CAMERA
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            hasCameraPermission = true
+        } else {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
 
     // 从相册选择
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -91,9 +115,7 @@ fun QrScannerScreen(
                         hasResult = true
                         onResult(result.text)
                     }
-                } catch (_: Exception) {
-                    // 未检测到二维码
-                }
+                } catch (_: Exception) {}
             }
         }
     }
@@ -122,124 +144,151 @@ fun QrScannerScreen(
                     }
                 },
         ) {
-            // 相机预览
-            AndroidView(
-                factory = { ctx ->
-                    val previewView = PreviewView(ctx)
-                    val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-                    cameraProviderFuture.addListener({
-                        val cameraProvider = cameraProviderFuture.get()
-                        val preview = Preview.Builder().build().also {
-                            it.surfaceProvider = previewView.surfaceProvider
-                        }
-                        val imageAnalysis = ImageAnalysis.Builder()
-                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                            .build()
-                            .also { analysis ->
-                                analysis.setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
-                                    if (hasResult) {
-                                        imageProxy.close()
-                                        return@setAnalyzer
-                                    }
-                                    val buffer = imageProxy.planes[0].buffer
-                                    val bytes = ByteArray(buffer.remaining())
-                                    buffer.get(bytes)
-                                    val source = PlanarYUVLuminanceSource(
-                                        bytes,
-                                        imageProxy.width,
-                                        imageProxy.height,
-                                        0, 0,
-                                        imageProxy.width,
-                                        imageProxy.height,
-                                        false,
-                                    )
-                                    val binaryBitmap = BinaryBitmap(HybridBinarizer(source))
-                                    try {
-                                        val result = MultiFormatReader().decode(binaryBitmap)
-                                        if (!hasResult) {
-                                            hasResult = true
-                                            onResult(result.text)
-                                        }
-                                    } catch (_: Exception) {
-                                        // 未检测到二维码，继续扫描
-                                    } finally {
-                                        imageProxy.close()
-                                    }
+            if (hasCameraPermission) {
+                // 相机预览
+                AndroidView(
+                    factory = { ctx ->
+                        val previewView = PreviewView(ctx)
+                        val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+                        cameraProviderFuture.addListener({
+                            try {
+                                val cameraProvider = cameraProviderFuture.get()
+                                val preview = Preview.Builder().build().also {
+                                    it.surfaceProvider = previewView.surfaceProvider
                                 }
-                            }
-                        try {
-                            cameraProvider.unbindAll()
-                            val camera = cameraProvider.bindToLifecycle(
-                                lifecycleOwner,
-                                CameraSelector.DEFAULT_BACK_CAMERA,
-                                preview,
-                                imageAnalysis,
-                            )
-                            cameraControl = camera.cameraControl
-                        } catch (_: Exception) {}
-                    }, ContextCompat.getMainExecutor(ctx))
-                    previewView
-                },
-                modifier = Modifier.fillMaxSize(),
-            )
+                                val imageAnalysis = ImageAnalysis.Builder()
+                                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                    .build()
+                                    .also { analysis ->
+                                        analysis.setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
+                                            if (hasResult) {
+                                                imageProxy.close()
+                                                return@setAnalyzer
+                                            }
+                                            val buffer = imageProxy.planes[0].buffer
+                                            val bytes = ByteArray(buffer.remaining())
+                                            buffer.get(bytes)
+                                            val source = PlanarYUVLuminanceSource(
+                                                bytes,
+                                                imageProxy.width,
+                                                imageProxy.height,
+                                                0, 0,
+                                                imageProxy.width,
+                                                imageProxy.height,
+                                                false,
+                                            )
+                                            val binaryBitmap = BinaryBitmap(HybridBinarizer(source))
+                                            try {
+                                                val result = MultiFormatReader().decode(binaryBitmap)
+                                                if (!hasResult) {
+                                                    hasResult = true
+                                                    onResult(result.text)
+                                                }
+                                            } catch (_: Exception) {
+                                            } finally {
+                                                imageProxy.close()
+                                            }
+                                        }
+                                    }
+                                cameraProvider.unbindAll()
+                                val camera = cameraProvider.bindToLifecycle(
+                                    lifecycleOwner,
+                                    CameraSelector.DEFAULT_BACK_CAMERA,
+                                    preview,
+                                    imageAnalysis,
+                                )
+                                cameraControl = camera.cameraControl
+                            } catch (_: Exception) {}
+                        }, ContextCompat.getMainExecutor(ctx))
+                        previewView
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
 
-            // 扫描框覆盖层
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                // 半透明遮罩
+                // 扫描框
                 Box(
-                    modifier = Modifier
-                        .size(250.dp)
-                        .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)),
-                )
-            }
-
-            // 底部控制栏
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                // 缩放指示
-                Text(
-                    text = "缩放: ${"%.1f".format(zoomLevel)}x",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "双指缩放调整大小",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.7f),
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    // 从相册选择
-                    IconButton(
-                        onClick = { galleryLauncher.launch("image/*") },
+                    Box(
                         modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.2f)),
-                    ) {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = "从相册选择",
-                            tint = Color.White,
-                        )
-                    }
+                            .size(250.dp)
+                            .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)),
+                    )
+                }
 
-                    // 关闭
+                // 底部控制栏
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = "缩放: ${"%.1f".format(zoomLevel)}x",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "双指缩放调整大小",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.7f),
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 底部栏：取消（左）+ 相册（右下角）
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        TextButton(
+                            onClick = onClose,
+                            modifier = Modifier.align(Alignment.CenterStart),
+                        ) {
+                            Text("取消", color = Color.White)
+                        }
+                        IconButton(
+                            onClick = { galleryLauncher.launch("image/*") },
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.2f)),
+                        ) {
+                            Icon(
+                                Icons.Default.PhotoLibrary,
+                                contentDescription = "从相册选择",
+                                tint = Color.White,
+                            )
+                        }
+                    }
+                }
+            } else {
+                // 无权限提示
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = "需要摄像头权限才能扫描二维码",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    androidx.compose.material3.Button(
+                        onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                    ) {
+                        Text("授予权限")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    TextButton(onClick = { galleryLauncher.launch("image/*") }) {
+                        Text("从相册选择")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
                     TextButton(onClick = onClose) {
-                        Text("取消", color = Color.White)
+                        Text("取消")
                     }
                 }
             }

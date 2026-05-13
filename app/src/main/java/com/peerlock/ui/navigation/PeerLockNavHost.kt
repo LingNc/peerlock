@@ -102,9 +102,10 @@ fun PeerLockNavHost(
         composable(Routes.DEVICE_OWNER_SETUP_SETTINGS) {
             DeviceOwnerSetupScreen(
                 onContinue = { navController.popBackStack() },
-                onSkip = { navController.popBackStack() },
                 onBack = { navController.popBackStack() },
                 onNavigateToRevokeDo = { navController.navigate(Routes.REVOKE_DO) },
+                showSkip = false,
+                showRevokeDo = true,
             )
         }
 

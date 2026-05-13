@@ -8,32 +8,17 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.peerlock.data.prefs.SecurePrefs
-import com.peerlock.system.adb.AdbClient
-import com.peerlock.system.adb.AdbKey
-import com.peerlock.system.adb.AdbMdns
-import com.peerlock.system.adb.AdbPairingClient
-import com.peerlock.system.adb.PreferenceAdbKeyStore
+import com.peerlock.system.adb.AdbPairingService
+import com.peerlock.system.adb.AdbPairingState
 import com.peerlock.system.deviceadmin.DeviceOwnerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 enum class SetupPhase { DO_SETUP, BATTERY_OPTIMIZATION }
-
-enum class AutoSetupState {
-    IDLE,           // 未开始
-    DISCOVERING,    // mDNS 搜索中
-    FOUND,          // 已发现配对服务，等待用户输入配对码
-    PAIRING,        // SPAKE2 配对中
-    PAIRED,         // 配对成功，连接 ADB 执行 DO 命令中
-    SUCCESS,        // DO 设置成功
-    ERROR,          // 出错
-}
 
 data class DeviceOwnerSetupUiState(
     val phase: SetupPhase = SetupPhase.DO_SETUP,
@@ -43,12 +28,9 @@ data class DeviceOwnerSetupUiState(
     val isBatteryExempt: Boolean = false,
     val batteryRequested: Boolean = false,
     val statusMessage: String? = null,
-    // 一键设置状态
-    val autoSetupState: AutoSetupState = AutoSetupState.IDLE,
+    // 一键设置状态（来自 AdbPairingService）
+    val autoSetupState: AdbPairingState = AdbPairingState.IDLE,
     val autoSetupMessage: String? = null,
-    val pairingPort: Int = 0,
-    val connectPort: Int = 0,
-    val showPairingCodeDialog: Boolean = false,
 )
 
 @HiltViewModel
@@ -67,9 +49,6 @@ class DeviceOwnerSetupViewModel @Inject constructor(
 
     private val powerManager = application.getSystemService(PowerManager::class.java)
 
-    private var pairingMdns: AdbMdns? = null
-    private var connectMdns: AdbMdns? = null
-
     val adbCommand: String
         get() = "adb shell dpm set-device-owner ${application.packageName}/.system.deviceadmin.PeerLockDeviceAdminReceiver"
 
@@ -79,6 +58,21 @@ class DeviceOwnerSetupViewModel @Inject constructor(
     init {
         checkDeviceOwnerStatus()
         checkBatteryOptimization()
+        // 观察 AdbPairingService 状态
+        viewModelScope.launch {
+            AdbPairingService.state.collect { state ->
+                _uiState.value = _uiState.value.copy(autoSetupState = state)
+            }
+        }
+        viewModelScope.launch {
+            AdbPairingService.message.collect { msg ->
+                _uiState.value = _uiState.value.copy(autoSetupMessage = msg)
+                // 配对成功后刷新 DO 状态
+                if (_uiState.value.autoSetupState == AdbPairingState.SUCCESS) {
+                    checkDeviceOwnerStatus()
+                }
+            }
+        }
     }
 
     fun checkDeviceOwnerStatus() {
@@ -100,14 +94,19 @@ class DeviceOwnerSetupViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(isBatteryExempt = exempt)
     }
 
-    fun advanceToDoComplete() {
+    /**
+     * DO 步骤完成后的处理。
+     * @return true 如果已豁免电池优化（调用方应直接导航），false 如果需要进入电池优化步骤
+     */
+    fun advanceToDoComplete(): Boolean {
         checkBatteryOptimization()
         val batteryExempt = _uiState.value.isBatteryExempt
         if (batteryExempt) {
             securePrefs.batteryOptimizationDone = true
-        } else {
-            _uiState.value = _uiState.value.copy(phase = SetupPhase.BATTERY_OPTIMIZATION)
+            return true
         }
+        _uiState.value = _uiState.value.copy(phase = SetupPhase.BATTERY_OPTIMIZATION)
+        return false
     }
 
     fun requestBatteryExemption() {
@@ -142,147 +141,18 @@ class DeviceOwnerSetupViewModel @Inject constructor(
         securePrefs.batteryOptimizationDone = true
     }
 
-    // === 一键设置 Device Owner ===
+    // === 一键设置 Device Owner（通过 AdbPairingService）===
 
     fun startAutoSetup() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
-        _uiState.value = _uiState.value.copy(
-            autoSetupState = AutoSetupState.DISCOVERING,
-            autoSetupMessage = "正在搜索 ADB 配对服务...",
-        )
-        pairingMdns?.stop()
-        pairingMdns = AdbMdns(application, AdbMdns.TLS_PAIRING) { port ->
-            Log.i(TAG, "Pairing service found on port $port")
-            _uiState.value = _uiState.value.copy(
-                autoSetupState = AutoSetupState.FOUND,
-                autoSetupMessage = "已发现配对服务（端口 $port）",
-                pairingPort = port,
-                showPairingCodeDialog = true,
-            )
-        }.also { it.start() }
-
-        // 同时搜索 ADB 连接端口
-        connectMdns?.stop()
-        connectMdns = AdbMdns(application, AdbMdns.TLS_CONNECT) { port ->
-            Log.i(TAG, "ADB connect service found on port $port")
-            _uiState.value = _uiState.value.copy(connectPort = port)
-        }.also { it.start() }
+        AdbPairingService.start(application)
     }
 
     fun stopAutoSetup() {
-        pairingMdns?.stop()
-        connectMdns?.stop()
-        pairingMdns = null
-        connectMdns = null
+        AdbPairingService.stop(application)
         _uiState.value = _uiState.value.copy(
-            autoSetupState = AutoSetupState.IDLE,
+            autoSetupState = AdbPairingState.IDLE,
             autoSetupMessage = null,
-            showPairingCodeDialog = false,
         )
-    }
-
-    fun dismissPairingCodeDialog() {
-        _uiState.value = _uiState.value.copy(showPairingCodeDialog = false)
-    }
-
-    fun onPairingCodeEntered(code: String) {
-        _uiState.value = _uiState.value.copy(
-            showPairingCodeDialog = false,
-            autoSetupState = AutoSetupState.PAIRING,
-            autoSetupMessage = "正在配对...",
-        )
-
-        viewModelScope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) { performPairing(code) }
-                if (result) {
-                    _uiState.value = _uiState.value.copy(
-                        autoSetupState = AutoSetupState.PAIRED,
-                        autoSetupMessage = "配对成功，正在设置 Device Owner...",
-                    )
-                    val doResult = withContext(Dispatchers.IO) { executeDeviceOwnerCommand() }
-                    if (doResult) {
-                        pairingMdns?.stop()
-                        connectMdns?.stop()
-                        _uiState.value = _uiState.value.copy(
-                            autoSetupState = AutoSetupState.SUCCESS,
-                            autoSetupMessage = "Device Owner 设置成功！",
-                        )
-                        checkDeviceOwnerStatus()
-                    } else {
-                        _uiState.value = _uiState.value.copy(
-                            autoSetupState = AutoSetupState.ERROR,
-                            autoSetupMessage = "DO 命令执行失败，请检查设备是否已添加账户",
-                        )
-                    }
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        autoSetupState = AutoSetupState.ERROR,
-                        autoSetupMessage = "配对失败，请检查配对码是否正确",
-                    )
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Auto setup failed", e)
-                _uiState.value = _uiState.value.copy(
-                    autoSetupState = AutoSetupState.ERROR,
-                    autoSetupMessage = "错误: ${e.message}",
-                )
-            }
-        }
-    }
-
-    private fun performPairing(pairCode: String): Boolean {
-        val port = _uiState.value.pairingPort
-        if (port <= 0) return false
-
-        val keyStore = PreferenceAdbKeyStore(
-            application.getSharedPreferences("peerlock_adb", android.content.Context.MODE_PRIVATE),
-        )
-        val key = AdbKey(keyStore, "peerlock")
-
-        AdbPairingClient("127.0.0.1", port, pairCode, key).use { client ->
-            return client.start()
-        }
-    }
-
-    private fun executeDeviceOwnerCommand(): Boolean {
-        // 先尝试连接已发现的端口
-        val connectPort = _uiState.value.connectPort
-        if (connectPort > 0) {
-            return executeOnPort(connectPort)
-        }
-
-        // 如果没有通过 mDNS 发现，尝试常见端口
-        for (port in listOf(5555, 37217, 43221)) {
-            if (executeOnPort(port)) return true
-        }
-        return false
-    }
-
-    private fun executeOnPort(port: Int): Boolean {
-        return try {
-            val keyStore = PreferenceAdbKeyStore(
-                application.getSharedPreferences("peerlock_adb", android.content.Context.MODE_PRIVATE),
-            )
-            val key = AdbKey(keyStore, "peerlock")
-
-            AdbClient("127.0.0.1", port, key).use { client ->
-                client.connect()
-                val result = client.shellCommand(
-                    "dpm set-device-owner ${application.packageName}/.system.deviceadmin.PeerLockDeviceAdminReceiver",
-                )
-                Log.i(TAG, "DO command result: $result")
-                result.contains("Success") || deviceOwnerManager.isDeviceOwner()
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed on port $port: ${e.message}")
-            false
-        }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        pairingMdns?.stop()
-        connectMdns?.stop()
     }
 }

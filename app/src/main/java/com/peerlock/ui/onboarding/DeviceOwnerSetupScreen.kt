@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -19,7 +18,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -28,13 +26,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -42,21 +36,23 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.peerlock.system.adb.AdbPairingState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeviceOwnerSetupScreen(
     onContinue: () -> Unit,
-    onSkip: () -> Unit,
+    onSkip: () -> Unit = {},
     onBack: () -> Unit = {},
     onNavigateToRevokeDo: () -> Unit = {},
-    showSkip: Boolean = true,
+    showSkip: Boolean = false,
+    showRevokeDo: Boolean = false,
     viewModel: DeviceOwnerSetupViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val clipboardManager = LocalClipboardManager.current
 
-    // 监听 onResume，检测电池优化状态变化
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -76,15 +72,18 @@ fun DeviceOwnerSetupScreen(
             clipboardManager = clipboardManager,
             onCheckStatus = { viewModel.checkDeviceOwnerStatus() },
             onToggleGuide = { viewModel.toggleWirelessGuide() },
-            onDoComplete = { viewModel.advanceToDoComplete() },
+            onDoComplete = {
+                if (viewModel.advanceToDoComplete()) {
+                    onContinue()
+                }
+            },
             onSkip = onSkip,
             onBack = onBack,
             onNavigateToRevokeDo = onNavigateToRevokeDo,
             showSkip = showSkip,
+            showRevokeDo = showRevokeDo,
             onStartAutoSetup = { viewModel.startAutoSetup() },
             onStopAutoSetup = { viewModel.stopAutoSetup() },
-            onPairingCodeEntered = { viewModel.onPairingCodeEntered(it) },
-            onDismissPairingDialog = { viewModel.dismissPairingCodeDialog() },
         )
         SetupPhase.BATTERY_OPTIMIZATION -> BatteryOptimizationStep(
             isExempt = uiState.isBatteryExempt,
@@ -118,51 +117,11 @@ private fun DeviceOwnerStep(
     onSkip: () -> Unit,
     onBack: () -> Unit,
     onNavigateToRevokeDo: () -> Unit = {},
-    showSkip: Boolean = true,
+    showSkip: Boolean = false,
+    showRevokeDo: Boolean = false,
     onStartAutoSetup: () -> Unit = {},
     onStopAutoSetup: () -> Unit = {},
-    onPairingCodeEntered: (String) -> Unit = {},
-    onDismissPairingDialog: () -> Unit = {},
 ) {
-    // 配对码输入对话框
-    if (uiState.showPairingCodeDialog) {
-        var pairingCode by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = onDismissPairingDialog,
-            title = { Text("输入配对码") },
-            text = {
-                Column {
-                    Text("请在「设置 → 开发者选项 → 无线调试 → 使用配对码配对设备」中查看配对码。")
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = pairingCode,
-                        onValueChange = { pairingCode = it.filter { c -> c.isDigit() } },
-                        label = { Text("配对码") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    if (uiState.pairingPort > 0) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "端口: ${uiState.pairingPort}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { onPairingCodeEntered(pairingCode) },
-                    enabled = pairingCode.length >= 6,
-                ) { Text("配对") }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismissPairingDialog) { Text("取消") }
-            },
-        )
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -195,9 +154,11 @@ private fun DeviceOwnerStep(
                 Button(onClick = onDoComplete, modifier = Modifier.fillMaxWidth()) {
                     Text("继续")
                 }
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedButton(onClick = onNavigateToRevokeDo, modifier = Modifier.fillMaxWidth()) {
-                    Text("取消 Device Owner", color = MaterialTheme.colorScheme.error)
+                if (showRevokeDo) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(onClick = onNavigateToRevokeDo, modifier = Modifier.fillMaxWidth()) {
+                        Text("取消 Device Owner", color = MaterialTheme.colorScheme.error)
+                    }
                 }
             } else {
                 Text(
@@ -210,7 +171,7 @@ private fun DeviceOwnerStep(
                 // 一键设置按钮（Android 11+）
                 if (supportsWirelessAdb) {
                     when (uiState.autoSetupState) {
-                        AutoSetupState.IDLE -> {
+                        AdbPairingState.IDLE -> {
                             Button(
                                 onClick = onStartAutoSetup,
                                 modifier = Modifier.fillMaxWidth(),
@@ -218,15 +179,15 @@ private fun DeviceOwnerStep(
                                 Text("一键设置 Device Owner")
                             }
                             Text(
-                                text = "需要先在开发者选项中开启「无线调试」",
+                                text = "需要先在开发者选项中开启「无线调试」\n配对码将在通知栏输入",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 4.dp),
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                         }
-                        AutoSetupState.DISCOVERING, AutoSetupState.FOUND,
-                        AutoSetupState.PAIRING, AutoSetupState.PAIRED -> {
+                        AdbPairingState.DISCOVERING, AdbPairingState.FOUND,
+                        AdbPairingState.PAIRING, AdbPairingState.PAIRED -> {
                             CircularProgressIndicator(modifier = Modifier.padding(8.dp))
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
@@ -234,13 +195,18 @@ private fun DeviceOwnerStep(
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = TextAlign.Center,
                             )
+                            Text(
+                                text = "请在通知栏输入配对码",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                             Spacer(modifier = Modifier.height(12.dp))
                             OutlinedButton(onClick = onStopAutoSetup, modifier = Modifier.fillMaxWidth()) {
                                 Text("取消")
                             }
                             Spacer(modifier = Modifier.height(16.dp))
                         }
-                        AutoSetupState.SUCCESS -> {
+                        AdbPairingState.SUCCESS -> {
                             Icon(
                                 imageVector = Icons.Default.CheckCircle,
                                 contentDescription = null,
@@ -254,7 +220,7 @@ private fun DeviceOwnerStep(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                         }
-                        AutoSetupState.ERROR -> {
+                        AdbPairingState.ERROR -> {
                             Text(
                                 text = uiState.autoSetupMessage ?: "设置失败",
                                 style = MaterialTheme.typography.bodyMedium,
@@ -306,7 +272,6 @@ private fun DeviceOwnerStep(
                         Text("收起")
                     }
                 } else if (!supportsWirelessAdb) {
-                    // Android 10 及以下：USB ADB
                     Text(
                         text = "请在电脑上执行以下命令（设备需已通过 USB 连接且未添加任何账户）：",
                         style = MaterialTheme.typography.bodyMedium,
