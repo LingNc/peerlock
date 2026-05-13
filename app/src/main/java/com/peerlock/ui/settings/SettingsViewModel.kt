@@ -122,6 +122,16 @@ class SettingsViewModel @Inject constructor(
         val pm = application.getSystemService(android.os.PowerManager::class.java)
         val exempt = pm.isIgnoringBatteryOptimizations(application.packageName)
         _uiState.value = _uiState.value.copy(isBatteryExempt = exempt)
+        // 首次返回时系统可能延迟更新，延迟 500ms 再检查一次
+        if (!exempt) {
+            viewModelScope.launch {
+                delay(500)
+                val recheck = pm.isIgnoringBatteryOptimizations(application.packageName)
+                if (recheck) {
+                    _uiState.value = _uiState.value.copy(isBatteryExempt = true)
+                }
+            }
+        }
     }
 
     fun cancelReset() {
