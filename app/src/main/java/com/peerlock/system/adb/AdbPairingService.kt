@@ -108,6 +108,13 @@ class AdbPairingService : Service() {
         super.onDestroy()
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        Log.i(TAG, "ADB配对任务已移除，清理状态")
+        cancelAll()
+        stopSelf()
+    }
+
     private fun startDiscovery() {
         _state.value = AdbPairingState.DISCOVERING
         _message.value = "正在搜索 ADB 配对服务..."

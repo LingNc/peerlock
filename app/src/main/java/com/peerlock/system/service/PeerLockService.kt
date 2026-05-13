@@ -132,6 +132,13 @@ class PeerLockService : Service() {
         super.onDestroy()
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        // 用户从最近任务移除时，重新调度巡检以保持服务存活
+        Log.i(TAG, "任务已移除，重新调度巡检")
+        scheduleNextPatrol()
+    }
+
     private fun scheduleNextPatrol() {
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(this, PeerLockService::class.java).apply {
@@ -163,7 +170,7 @@ class PeerLockService : Service() {
         val channel = NotificationChannel(
             CHANNEL_ID,
             "PeerLock 服务",
-            NotificationManager.IMPORTANCE_LOW
+            NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
             description = "PeerLock 后台运行通知"
             setShowBadge(false)
@@ -184,6 +191,7 @@ class PeerLockService : Service() {
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
+            .setAutoCancel(false)
             .build()
     }
 
