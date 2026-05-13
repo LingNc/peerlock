@@ -27,15 +27,19 @@ data class TotpCodeInfo(
     val remainingSeconds: Int,
 )
 
+enum class PairingInfoTab { CURRENT, HISTORY }
+
 data class PairingInfoUiState(
     val isPaired: Boolean = false,
     val role: String = "",
+    val currentTab: PairingInfoTab = PairingInfoTab.CURRENT,
     val peerDeviceName: String = "未知设备",
     val fingerprint: String = "--------",
     val pairingTime: String = "",
     val sessionId: String = "",
     val sessionIdFull: String = "",
     val status: String = "ACTIVE",
+    val currentSessions: List<HistorySession> = emptyList(),
     val historySessions: List<HistorySession> = emptyList(),
     val isLoading: Boolean = true,
     val showCodes: Boolean = false,
@@ -77,15 +81,16 @@ class PairingInfoViewModel @Inject constructor(
 
                 // 加载所有会话（包括已归档的）
                 val allSessions = pairingSessionDao.getAll()
-                val activeSessions = allSessions.filter { it.status in listOf("ACTIVE", "WAITING", "REVOKED") }
+                val currentSessions = allSessions
+                    .filter { it.status in listOf("ACTIVE", "WAITING", "REVOKED") }
+                    .map { HistorySession(it.sessionId, it.peerDeviceName, it.status, it.createdAt, it.role) }
+                val historySessions = allSessions
+                    .filter { it.status == "ARCHIVED" }
+                    .map { HistorySession(it.sessionId, it.peerDeviceName, it.status, it.createdAt, it.role) }
 
-                if (activeSessions.isNotEmpty()) {
-                    val current = activeSessions.firstOrNull { it.status == "ACTIVE" }
-                        ?: activeSessions.first()
-                    // 历史 = 当前会话之外的所有会话（包括归档的）
-                    val history = allSessions.filter { it.sessionId != current.sessionId }.map {
-                        HistorySession(it.sessionId, it.peerDeviceName, it.status, it.createdAt, it.role)
-                    }
+                if (currentSessions.isNotEmpty()) {
+                    val current = allSessions.firstOrNull { it.status == "ACTIVE" }
+                        ?: allSessions.first { it.status in listOf("ACTIVE", "WAITING", "REVOKED") }
                     _uiState.value = PairingInfoUiState(
                         isPaired = true,
                         role = role,
@@ -95,7 +100,8 @@ class PairingInfoViewModel @Inject constructor(
                         sessionId = current.sessionId.take(8) + if (current.sessionId.length > 8) "..." else "",
                         sessionIdFull = current.sessionId,
                         status = current.status,
-                        historySessions = history,
+                        currentSessions = currentSessions,
+                        historySessions = historySessions,
                         isLoading = false,
                     )
                 } else {
@@ -116,6 +122,7 @@ class PairingInfoViewModel @Inject constructor(
                         sessionId = if (isPaired) sessionId.take(8) + if (sessionId.length > 8) "..." else "" else "",
                         sessionIdFull = sessionId,
                         status = if (isPaired) "ACTIVE" else "未配对",
+                        currentSessions = emptyList(),
                         historySessions = history,
                         isLoading = false,
                     )
@@ -128,6 +135,10 @@ class PairingInfoViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun switchTab(tab: PairingInfoTab) {
+        _uiState.value = _uiState.value.copy(currentTab = tab)
     }
 
     fun toggleShowCodes() {

@@ -27,6 +27,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -135,228 +137,234 @@ fun PairingInfoScreen(
             ) {
                 Text("加载中...", style = MaterialTheme.typography.bodyMedium)
             }
+        } else if (!uiState.isPaired) {
+            // 未配对状态
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+            ) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("当前未配对", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "此设备尚未与任何设备配对。\n请先完成配对流程。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         } else {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (!uiState.isPaired) {
-                // 未配对状态
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("当前未配对", style = MaterialTheme.typography.titleMedium)
-                }
-                item {
-                    Text(
-                        "此设备尚未与任何设备配对。\n请先完成配对流程。",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // 已配对 — Tab 布局
+            val tabIndex = if (uiState.currentTab == PairingInfoTab.CURRENT) 0 else 1
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+            ) {
+                TabRow(selectedTabIndex = tabIndex) {
+                    Tab(
+                        selected = tabIndex == 0,
+                        onClick = { viewModel.switchTab(PairingInfoTab.CURRENT) },
+                        text = { Text("当前配对") },
+                    )
+                    Tab(
+                        selected = tabIndex == 1,
+                        onClick = { viewModel.switchTab(PairingInfoTab.HISTORY) },
+                        text = { Text("历史记录 (${uiState.historySessions.size})") },
                     )
                 }
-            } else {
-                // 已配对状态 — 当前配对信息
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("当前配对", style = MaterialTheme.typography.titleMedium)
-                }
 
-                item {
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            InfoRow("对方设备", uiState.peerDeviceName)
-                            InfoRow("身份指纹", uiState.fingerprint)
-                            InfoRow("配对时间", uiState.pairingTime)
-                            InfoRow("会话 ID", uiState.sessionId)
-                            InfoRow("状态", uiState.status)
-                        }
-                    }
-                }
+                if (tabIndex == 0) {
+                    // 当前配对 Tab
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        item { Spacer(modifier = Modifier.height(8.dp)) }
 
-                if (uiState.role == "controller") {
-                    item {
-                        OutlinedButton(
-                            onClick = { viewModel.toggleShowCodes() },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(if (uiState.showCodes) "隐藏验证码" else "查看验证码")
-                        }
-                    }
-
-                    if (uiState.showCodes) {
-                        items(uiState.totpCodes) { codeInfo ->
+                        item {
                             Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    InfoRow("对方设备", uiState.peerDeviceName)
+                                    InfoRow("身份指纹", uiState.fingerprint)
+                                    InfoRow("配对时间", uiState.pairingTime)
+                                    InfoRow("会话 ID", uiState.sessionId)
+                                    InfoRow("状态", when (uiState.status) {
+                                        "WAITING" -> "等待配对"
+                                        "ACTIVE" -> "已配对"
+                                        "REVOKED" -> "已撤销"
+                                        else -> uiState.status
+                                    })
+                                }
+                            }
+                        }
+
+                        // 管控端：查看验证码
+                        if (uiState.role == "controller") {
+                            item {
+                                OutlinedButton(
+                                    onClick = { viewModel.toggleShowCodes() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(if (uiState.showCodes) "隐藏验证码" else "查看验证码")
+                                }
+                            }
+
+                            if (uiState.showCodes) {
+                                items(uiState.totpCodes) { codeInfo ->
+                                    Card(modifier = Modifier.fillMaxWidth()) {
+                                        Row(
+                                            modifier = Modifier
+                                                .padding(16.dp)
+                                                .fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Column {
+                                                Text(text = codeInfo.label, style = MaterialTheme.typography.bodyMedium)
+                                                Text(
+                                                    text = codeInfo.code,
+                                                    style = MaterialTheme.typography.headlineMedium.copy(
+                                                        fontFamily = FontFamily.Monospace,
+                                                        letterSpacing = 4.sp,
+                                                    ),
+                                                )
+                                            }
+                                            Text(
+                                                text = "${codeInfo.remainingSeconds}s",
+                                                style = MaterialTheme.typography.titleLarge,
+                                                color = if (codeInfo.remainingSeconds <= 5) MaterialTheme.colorScheme.error
+                                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 底部操作
+                        item {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        }
+
+                        if (uiState.role == "controller") {
+                            item {
+                                TextButton(
+                                    onClick = onNavigateToTerminateCode,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text("显示终止码", color = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        } else {
+                            item {
+                                TextButton(
+                                    onClick = onNavigateToApplyUnbind,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text("申请解除", color = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+
+                        item { Spacer(modifier = Modifier.height(16.dp)) }
+                    }
+                } else {
+                    // 历史记录 Tab
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        // 当前活跃会话列表（管控端可管理多个设备）
+                        if (uiState.currentSessions.isNotEmpty()) {
+                            item {
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Row(
-                                    modifier = Modifier
-                                        .padding(16.dp)
-                                        .fillMaxWidth(),
+                                    modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Column {
-                                        Text(text = codeInfo.label, style = MaterialTheme.typography.bodyMedium)
-                                        Text(
-                                            text = codeInfo.code,
-                                            style = MaterialTheme.typography.headlineMedium.copy(
-                                                fontFamily = FontFamily.Monospace,
-                                                letterSpacing = 4.sp,
-                                            ),
-                                        )
+                                    Text("活跃会话", style = MaterialTheme.typography.titleMedium)
+                                    if (uiState.role == "controlled") {
+                                        TextButton(onClick = { viewModel.toggleMultiSelect() }) {
+                                            Text(if (uiState.multiSelectMode) "取消" else "多选")
+                                        }
                                     }
-                                    Text(
-                                        text = "${codeInfo.remainingSeconds}s",
-                                        style = MaterialTheme.typography.titleLarge,
-                                        color = if (codeInfo.remainingSeconds <= 5) MaterialTheme.colorScheme.error
-                                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
                                 }
                             }
-                        }
-                    }
-                }
 
-                // 底部红色操作
-                item {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                }
-
-                if (uiState.role == "controller") {
-                    item {
-                        TextButton(
-                            onClick = onNavigateToTerminateCode,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                "显示终止码",
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
-                    }
-                } else {
-                    item {
-                        TextButton(
-                            onClick = onNavigateToApplyUnbind,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                "申请解除",
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
-                    }
-                }
-            }
-
-            // 历史配对记录（始终显示，无论是否已配对）
-            if (uiState.historySessions.isNotEmpty()) {
-                item {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("历史配对记录", style = MaterialTheme.typography.titleMedium)
-                        if (uiState.role == "controlled") {
-                            TextButton(onClick = { viewModel.toggleMultiSelect() }) {
-                                Text(if (uiState.multiSelectMode) "取消" else "多选")
-                            }
-                        }
-                    }
-                }
-
-                items(uiState.historySessions) { session ->
-                    val isSelected = session.sessionId in uiState.selectedIds
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isSelected)
-                                MaterialTheme.colorScheme.primaryContainer
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant,
-                        ),
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            if (uiState.multiSelectMode) {
-                                Checkbox(
-                                    checked = isSelected,
-                                    onCheckedChange = { viewModel.toggleSelect(session.sessionId) },
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                            }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(session.peerDeviceName, style = MaterialTheme.typography.bodyMedium)
-                                Row {
-                                    Text(
+                            items(uiState.currentSessions) { session ->
+                                SessionCard(
+                                    session = session,
+                                    role = uiState.role,
+                                    multiSelectMode = uiState.multiSelectMode,
+                                    isSelected = session.sessionId in uiState.selectedIds,
+                                    onSelect = { viewModel.toggleSelect(session.sessionId) },
+                                    onDelete = {
                                         when (session.status) {
-                                            "WAITING" -> "等待配对"
-                                            "ACTIVE" -> "已配对"
-                                            "REVOKED" -> "已撤销"
-                                            "ARCHIVED" -> "已归档"
-                                            else -> session.status
-                                        },
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = when (session.status) {
-                                            "WAITING" -> MaterialTheme.colorScheme.primary
-                                            "REVOKED" -> MaterialTheme.colorScheme.error
-                                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                        },
-                                    )
-                                    Text(
-                                        " · ${session.role}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                            if (!uiState.multiSelectMode && uiState.role == "controlled") {
-                                when (session.status) {
-                                    "WAITING" -> {
-                                        TextButton(onClick = { viewModel.deleteWaitingSession(session.sessionId) }) {
-                                            Text("删除", style = MaterialTheme.typography.bodySmall)
+                                            "WAITING" -> viewModel.deleteWaitingSession(session.sessionId)
+                                            "REVOKED" -> showDeleteConfirm = session.sessionId
+                                            "ACTIVE" -> viewModel.archiveSession(session.sessionId)
                                         }
-                                    }
-                                    "REVOKED" -> {
-                                        TextButton(onClick = { showDeleteConfirm = session.sessionId }) {
-                                            Text("申请删除种子", style = MaterialTheme.typography.bodySmall)
-                                        }
-                                    }
-                                    "ARCHIVED" -> {
-                                        TextButton(onClick = { viewModel.requestDelete(session.sessionId) }) {
-                                            Text("删除", style = MaterialTheme.typography.bodySmall)
-                                        }
-                                    }
-                                }
+                                    },
+                                )
                             }
                         }
-                    }
-                }
 
-                if (uiState.role == "controlled" && uiState.multiSelectMode && uiState.selectedIds.isNotEmpty()) {
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(
-                            onClick = { viewModel.deleteSelected() },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                        ) {
-                            Text("删除选中 (${uiState.selectedIds.size})")
+                        // 归档会话
+                        if (uiState.historySessions.isNotEmpty()) {
+                            item {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("已归档", style = MaterialTheme.typography.titleMedium)
+                            }
+
+                            items(uiState.historySessions) { session ->
+                                SessionCard(
+                                    session = session,
+                                    role = uiState.role,
+                                    multiSelectMode = uiState.multiSelectMode,
+                                    isSelected = session.sessionId in uiState.selectedIds,
+                                    onSelect = { viewModel.toggleSelect(session.sessionId) },
+                                    onDelete = { viewModel.requestDelete(session.sessionId) },
+                                )
+                            }
                         }
+
+                        if (uiState.currentSessions.isEmpty() && uiState.historySessions.isEmpty()) {
+                            item {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    "暂无历史记录",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+
+                        // 多选删除按钮
+                        if (uiState.role == "controlled" && uiState.multiSelectMode && uiState.selectedIds.isNotEmpty()) {
+                            item {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = { viewModel.deleteSelected() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                ) {
+                                    Text("删除选中 (${uiState.selectedIds.size})")
+                                }
+                            }
+                        }
+
+                        item { Spacer(modifier = Modifier.height(16.dp)) }
                     }
                 }
             }
-
-            item { Spacer(modifier = Modifier.height(16.dp)) }
-        }
-        } // else (not loading)
+        } // else (paired)
     }
 }
 
@@ -365,5 +373,97 @@ private fun InfoRow(label: String, value: String) {
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium)
         Text(value, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable
+private fun SessionCard(
+    session: HistorySession,
+    role: String,
+    multiSelectMode: Boolean,
+    isSelected: Boolean,
+    onSelect: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (multiSelectMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onSelect() },
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(session.peerDeviceName, style = MaterialTheme.typography.bodyMedium)
+                Row {
+                    Text(
+                        when (session.status) {
+                            "WAITING" -> "等待配对"
+                            "ACTIVE" -> "已配对"
+                            "REVOKED" -> "已撤销"
+                            "ARCHIVED" -> "已归档"
+                            else -> session.status
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = when (session.status) {
+                            "WAITING" -> MaterialTheme.colorScheme.primary
+                            "REVOKED" -> MaterialTheme.colorScheme.error
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                    Text(
+                        " · ${session.role}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            if (!multiSelectMode) {
+                when {
+                    // 被控端操作
+                    role == "controlled" && session.status == "WAITING" -> {
+                        TextButton(onClick = onDelete) {
+                            Text("删除", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    role == "controlled" && session.status == "REVOKED" -> {
+                        TextButton(onClick = onDelete) {
+                            Text("申请删除种子", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    role == "controlled" && session.status == "ARCHIVED" -> {
+                        TextButton(onClick = onDelete) {
+                            Text("删除", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    // 管控端操作
+                    role == "controller" && session.status == "ACTIVE" -> {
+                        TextButton(onClick = onDelete) {
+                            Text("归档", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    role == "controller" && session.status == "ARCHIVED" -> {
+                        TextButton(onClick = onDelete) {
+                            Text("删除", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
