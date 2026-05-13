@@ -28,7 +28,12 @@ internal class AdbMdns(
         if (running) return
         running = true
         if (!registered) {
-            nsdManager.discoverServices(serviceType, NsdManager.PROTOCOL_DNS_SD, discoveryListener)
+            try {
+                nsdManager.discoverServices(serviceType, NsdManager.PROTOCOL_DNS_SD, discoveryListener)
+            } catch (e: Exception) {
+                PeerLockLogger.e(TAG, "discoverServices failed", e)
+                running = false
+            }
         }
     }
 

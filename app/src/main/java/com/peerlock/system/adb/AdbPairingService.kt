@@ -121,20 +121,27 @@ class AdbPairingService : Service() {
 
         updateNotification("正在搜索 ADB 配对服务...", "请确保已开启无线调试")
 
-        pairingMdns?.stop()
-        pairingMdns = AdbMdns(this, AdbMdns.TLS_PAIRING) { port ->
-            PeerLockLogger.i(TAG, "Pairing service found on port $port")
-            _pairingPort.value = port
-            _state.value = AdbPairingState.FOUND
-            _message.value = "已发现配对服务（端口 $port）"
-            showPairingCodeNotification(port)
-        }.also { it.start() }
+        try {
+            pairingMdns?.stop()
+            pairingMdns = AdbMdns(this, AdbMdns.TLS_PAIRING) { port ->
+                PeerLockLogger.i(TAG, "Pairing service found on port $port")
+                _pairingPort.value = port
+                _state.value = AdbPairingState.FOUND
+                _message.value = "已发现配对服务（端口 $port）"
+                showPairingCodeNotification(port)
+            }.also { it.start() }
 
-        connectMdns?.stop()
-        connectMdns = AdbMdns(this, AdbMdns.TLS_CONNECT) { port ->
-            PeerLockLogger.i(TAG, "ADB connect service found on port $port")
-            _connectPort.value = port
-        }.also { it.start() }
+            connectMdns?.stop()
+            connectMdns = AdbMdns(this, AdbMdns.TLS_CONNECT) { port ->
+                PeerLockLogger.i(TAG, "ADB connect service found on port $port")
+                _connectPort.value = port
+            }.also { it.start() }
+        } catch (e: Exception) {
+            PeerLockLogger.e(TAG, "mDNS discovery failed", e)
+            _state.value = AdbPairingState.ERROR
+            _message.value = "搜索失败: ${e.message}"
+            updateNotification("搜索失败", e.message ?: "未知错误")
+        }
     }
 
     private fun showPairingCodeNotification(port: Int) {
