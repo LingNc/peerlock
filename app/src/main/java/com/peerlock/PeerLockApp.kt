@@ -13,9 +13,10 @@ class PeerLockApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        if (BuildConfig.DEV_DEBUG) {
-            PeerLockLogger.setEnabled(true)
-        }
+        // 日志默认启用，用户可在日志页手动关闭
+        val debugPrefs = getSharedPreferences("peerlock_debug", 0)
+        PeerLockLogger.setEnabled(debugPrefs.getBoolean("log_enabled", true))
+        PeerLockLogger.setAdvanced(debugPrefs.getBoolean("log_advanced", false))
         if (deviceOwnerManager.isDeviceOwner()) {
             deviceOwnerManager.setUninstallBlocked(true)
         }

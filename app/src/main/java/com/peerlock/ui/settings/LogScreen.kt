@@ -55,7 +55,7 @@ fun LogScreen(
     val listState = rememberLazyListState()
 
     LaunchedEffect(l2Unlocked) {
-        viewModel.setL2Unlocked(l2Unlocked)
+        if (l2Unlocked) viewModel.setL2Unlocked(true)
     }
 
     LaunchedEffect(uiState.logs.size) {
