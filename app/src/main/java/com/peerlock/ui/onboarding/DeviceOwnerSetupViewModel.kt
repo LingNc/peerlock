@@ -28,6 +28,7 @@ data class DeviceOwnerSetupUiState(
     val isBatteryExempt: Boolean = false,
     val batteryRequested: Boolean = false,
     val statusMessage: String? = null,
+    val checkTimestamp: Long = 0L,
     // 一键设置状态（来自 AdbPairingService）
     val autoSetupState: AdbPairingState = AdbPairingState.IDLE,
     val autoSetupMessage: String? = null,
@@ -76,12 +77,16 @@ class DeviceOwnerSetupViewModel @Inject constructor(
     }
 
     fun checkDeviceOwnerStatus() {
-        _uiState.value = _uiState.value.copy(statusMessage = "正在检查...")
+        _uiState.value = _uiState.value.copy(
+            statusMessage = "正在检查...",
+            checkTimestamp = System.currentTimeMillis(),
+        )
         val isOwner = deviceOwnerManager.isDeviceOwner()
         _uiState.value = _uiState.value.copy(
             isDeviceOwner = isOwner,
             isChecked = true,
             statusMessage = if (isOwner) "Device Owner 已设置" else "Device Owner 未设置",
+            checkTimestamp = System.currentTimeMillis(),
         )
     }
 
