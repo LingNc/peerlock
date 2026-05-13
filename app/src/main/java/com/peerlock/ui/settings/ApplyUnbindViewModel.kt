@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.data.seed.SeedManager
+import com.peerlock.domain.repository.AuditLog
+import com.peerlock.domain.repository.StorageRepository
 import com.peerlock.domain.totp.KeyType
 import com.peerlock.domain.totp.TotpEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -30,6 +32,7 @@ class ApplyUnbindViewModel @Inject constructor(
     private val securePrefs: SecurePrefs,
     private val seedManager: SeedManager,
     private val totpEngine: TotpEngine,
+    private val storageRepository: StorageRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ApplyUnbindUiState())
@@ -74,6 +77,15 @@ class ApplyUnbindViewModel @Inject constructor(
         // 清除加密材料
         securePrefs.clearPairingData()
         seedManager.clearSeeds()
+
+        storageRepository.insertAuditLog(
+            AuditLog(
+                timestamp = System.currentTimeMillis(),
+                action = "UNBIND",
+                targetPackage = null,
+                detail = "被控端申请解除配对: 终止码验证通过",
+            )
+        )
 
         _uiState.value = _uiState.value.copy(
             step = UnbindStep.UNBOUND,
