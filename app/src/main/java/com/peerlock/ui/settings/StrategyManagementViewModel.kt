@@ -1,5 +1,7 @@
 package com.peerlock.ui.settings
 
+import android.app.Application
+import android.content.pm.ApplicationInfo
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.peerlock.data.prefs.SecurePrefs
@@ -40,16 +42,25 @@ data class PolicyChange(
 enum class PolicyMode { MANAGEMENT_CODE, REQUEST }
 enum class StrategyTab { APP_POLICY, CONFIG_PARAMS }
 
+data class AppInfo(
+    val packageName: String,
+    val appName: String,
+    val hasPolicy: Boolean,
+)
+
 data class StrategyUiState(
     val currentTab: StrategyTab = StrategyTab.APP_POLICY,
     val appPolicy: PolicyTabState = PolicyTabState(),
     val configParams: PolicyTabState = PolicyTabState(),
     val role: String = "",
     val isLoading: Boolean = false,
+    val installedApps: List<AppInfo> = emptyList(),
+    val searchQuery: String = "",
 )
 
 @HiltViewModel
 class StrategyManagementViewModel @Inject constructor(
+    private val application: Application,
     private val storageRepository: StorageRepository,
     private val policyEngine: PolicyEngine,
     private val securePrefs: SecurePrefs,
@@ -62,18 +73,58 @@ class StrategyManagementViewModel @Inject constructor(
     val uiState: StateFlow<StrategyUiState> = _uiState.asStateFlow()
 
     init {
-        loadPolicies()
+        loadData()
     }
 
-    private fun loadPolicies() {
+    private fun loadData() {
         viewModelScope.launch {
             val policies = storageRepository.getActivePolicies()
             val role = securePrefs.role ?: ""
+            val installedApps = loadInstalledApps(policies)
             _uiState.value = _uiState.value.copy(
                 role = role,
                 appPolicy = _uiState.value.appPolicy.copy(policies = policies),
+                installedApps = installedApps,
             )
         }
+    }
+
+    private fun loadInstalledApps(policies: List<RestrictionPolicy>): List<AppInfo> {
+        val pm = application.packageManager
+        val policyPackages = policies.map { it.targetPackage }.toSet()
+        val selfPackage = application.packageName
+        return pm.getInstalledApplications(0)
+            .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
+            .filter { it.packageName != selfPackage }
+            .map { appInfo ->
+                AppInfo(
+                    packageName = appInfo.packageName,
+                    appName = pm.getApplicationLabel(appInfo).toString(),
+                    hasPolicy = appInfo.packageName in policyPackages,
+                )
+            }
+            .sortedWith(compareBy<AppInfo> { !it.hasPolicy }.thenBy { it.appName })
+    }
+
+    fun addPolicyForApp(packageName: String) {
+        viewModelScope.launch {
+            val policy = RestrictionPolicy(
+                targetPackage = packageName,
+                dailyLimitMinutes = 60,
+                allowedTimeStart = null,
+                allowedTimeEnd = null,
+                isBlacklist = true,
+                isActive = true,
+                createdAt = System.currentTimeMillis(),
+                lastModified = System.currentTimeMillis(),
+            )
+            storageRepository.upsertPolicy(policy)
+            loadData()
+        }
+    }
+
+    fun updateSearchQuery(query: String) {
+        _uiState.value = _uiState.value.copy(searchQuery = query)
     }
 
     fun switchTab(tab: StrategyTab) {
@@ -157,7 +208,7 @@ class StrategyManagementViewModel @Inject constructor(
                 showCodeInput = false,
             ),
         )
-        loadPolicies()
+        loadData()
     }
 
     fun generateChangeRequest() {

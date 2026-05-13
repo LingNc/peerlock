@@ -107,6 +107,15 @@ fun ControlledHomeScreen(
                 }
             }
 
+            item {
+                OutlinedButton(
+                    onClick = { onRequestUnlock(null) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("申请解锁")
+                }
+            }
+
             if (uiState.policies.isEmpty()) {
                 item {
                     Text(

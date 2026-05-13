@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -21,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Tab
@@ -84,6 +86,9 @@ fun StrategyManagementScreen(
                 StrategyTab.APP_POLICY -> {
                     AppPolicyTab(
                         state = uiState.appPolicy,
+                        installedApps = uiState.installedApps,
+                        searchQuery = uiState.searchQuery,
+                        onSearchQueryChange = { viewModel.updateSearchQuery(it) },
                         onToggle = { viewModel.togglePolicy(it) },
                         onSelectAll = { viewModel.selectAllPolicies() },
                         onUpdateLimit = { id, min -> viewModel.updateDailyLimit(id, min) },
@@ -92,6 +97,7 @@ fun StrategyManagementScreen(
                         onGenerateRequest = { viewModel.generateChangeRequest() },
                         onVerifyCode = { viewModel.verifyManagementCode(it) },
                         onCancelCodeInput = { viewModel.cancelCodeInput() },
+                        onAddPolicy = { viewModel.addPolicyForApp(it) },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -108,6 +114,9 @@ fun StrategyManagementScreen(
 @Composable
 private fun AppPolicyTab(
     state: com.peerlock.ui.settings.PolicyTabState,
+    installedApps: List<com.peerlock.ui.settings.AppInfo>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     onToggle: (Long) -> Unit,
     onSelectAll: () -> Unit,
     onUpdateLimit: (Long, Int) -> Unit,
@@ -116,6 +125,7 @@ private fun AppPolicyTab(
     onGenerateRequest: () -> Unit,
     onVerifyCode: (String) -> Unit,
     onCancelCodeInput: () -> Unit,
+    onAddPolicy: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -138,6 +148,16 @@ private fun AppPolicyTab(
         }
 
         item {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                label = { Text("搜索应用") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+        }
+
+        item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
                     selected = state.mode == PolicyMode.MANAGEMENT_CODE,
@@ -152,7 +172,12 @@ private fun AppPolicyTab(
             }
         }
 
-        items(state.policies) { policy ->
+        // 已有策略的应用
+        val filteredPolicies = if (searchQuery.isBlank()) state.policies
+        else state.policies.filter {
+            it.targetPackage.contains(searchQuery, ignoreCase = true)
+        }
+        items(filteredPolicies) { policy ->
             val isSelected = policy.id in state.selectedIds
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -183,6 +208,52 @@ private fun AppPolicyTab(
                             steps = 94,
                             modifier = Modifier.fillMaxWidth(),
                         )
+                    }
+                }
+            }
+        }
+
+        // 无策略的应用（可添加）
+        val policyPackages = state.policies.map { it.targetPackage }.toSet()
+        val unmanagedApps = installedApps.filter { app ->
+            app.packageName !in policyPackages &&
+                (searchQuery.isBlank() ||
+                    app.packageName.contains(searchQuery, ignoreCase = true) ||
+                    app.appName.contains(searchQuery, ignoreCase = true))
+        }
+        if (unmanagedApps.isNotEmpty()) {
+            item {
+                Text(
+                    "可添加限制的应用",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            items(unmanagedApps) { app ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(app.appName, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                app.packageName,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        IconButton(onClick = { onAddPolicy(app.packageName) }) {
+                            Icon(Icons.Default.Add, contentDescription = "添加限制")
+                        }
                     }
                 }
             }
