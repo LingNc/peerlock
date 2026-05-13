@@ -221,7 +221,7 @@ digraph PeerLockUI {
         ];
 
         CH [
-            label=<管控端主页<BR/><FONT POINT-SIZE="8" COLOR="#616161">StatusCard: 已配对 设备名 策略巡检运行中<BR/>验证码: 管理码 / 解锁码 每秒刷新<BR/>策略列表<BR/>[审批请求] [使用统计] [解锁应用] [调整策略]</FONT>>,
+            label=<管控端主页<BR/><FONT POINT-SIZE="8" COLOR="#616161">StatusCard: 已配对 设备名 策略巡检运行中<BR/>验证码: 管理码 / 解锁码 / 终止码 每秒刷新<BR/>策略列表<BR/>[审批请求] [使用统计] [解锁应用] [调整策略]</FONT>>,
             fillcolor="#E8F5E9",
             color="#2E7D32"
         ];
@@ -268,7 +268,7 @@ digraph PeerLockUI {
             fontsize=10;
 
             CFP_APP [
-                label=<应用策略 Tab<BR/><FONT POINT-SIZE="8" COLOR="#616161">多选应用 FilterChip<BR/>调整时长/时段参数</FONT>>,
+                label=<应用策略 Tab<BR/><FONT POINT-SIZE="8" COLOR="#616161">被控端应用列表(缓存) + 搜索框<BR/>多选应用 FilterChip<BR/>调整时长/时段参数</FONT>>,
                 fillcolor="#C8E6C9",
                 color="#388E3C"
             ];
@@ -294,7 +294,7 @@ digraph PeerLockUI {
 
         // 终止码
         TERM [
-            label=<终止码页<BR/><FONT POINT-SIZE="8" COLOR="#616161">EmergencyScreen<BR/>5s警告后显示终止码<BR/>6位 TOTP DESTROY 种子 每30秒刷新</FONT>>,
+            label=<终止码页<BR/><FONT POINT-SIZE="8" COLOR="#616161">EmergencyScreen<BR/>管控端: 5s警告后显示终止码<BR/>6位 TOTP DESTROY 种子 每30秒刷新 + 复制<BR/>被控端: 输入终止码 + L2 高级解除</FONT>>,
             fillcolor="#FFCDD2",
             color="#E53935"
         ];
@@ -310,7 +310,7 @@ digraph PeerLockUI {
         fontcolor="#E65100";
 
         CDH [
-            label=<被控端主页<BR/><FONT POINT-SIZE="8" COLOR="#616161">StatusCard: 已配对 接受管控<BR/>受限应用列表<BR/>[使用统计] [接收指令] [管理策略]</FONT>>,
+            label=<被控端主页<BR/><FONT POINT-SIZE="8" COLOR="#616161">StatusCard: 已配对 接受管控<BR/>受限应用列表<BR/>[申请解锁] [使用统计] [接收指令] [管理策略]</FONT>>,
             fillcolor="#FFF3E0",
             color="#E65100"
         ];
@@ -377,7 +377,7 @@ digraph PeerLockUI {
             fontsize=10;
 
             CP_APP [
-                label=<应用策略 Tab<BR/><FONT POINT-SIZE="8" COLOR="#616161">当前策略列表<BR/>多选 FilterChip</FONT>>,
+                label=<应用策略 Tab<BR/><FONT POINT-SIZE="8" COLOR="#616161">全部已安装应用 + 搜索框<BR/>已有策略: 编辑 / 无策略: [+] 添加<BR/>多选 FilterChip</FONT>>,
                 fillcolor="#FFF3E0",
                 color="#E65100"
             ];
@@ -446,13 +446,13 @@ digraph PeerLockUI {
         ];
 
         SET [
-            label=<设置页<BR/><FONT POINT-SIZE="8" COLOR="#616161">DO状态(点击→详情页) / 电池优化(点击→引导)<BR/>[配对信息] 主题模式 语言<BR/>[切换角色] [身份重置] 红色 10s确认<BR/>版本号连点7次 → L2</FONT>>,
+            label=<设置页<BR/><FONT POINT-SIZE="8" COLOR="#616161">DO状态(点击→详情页) / 电池优化(点击→引导)<BR/>[配对信息] [本机身份] (仅已配对时显示)<BR/>管控端: [设备选择]<BR/>主题模式 语言<BR/>[切换角色] [身份重置] 红色 10s确认<BR/>版本号连点7次 → L2</FONT>>,
             fillcolor="#EDE7F6",
             color="#5E35B1"
         ];
 
         PAIR_INFO [
-            label=<配对信息页 (FLAG_SECURE)<BR/><FONT POINT-SIZE="8" COLOR="#616161">设备名 / 身份指纹 / 会话ID / 状态<BR/>管控端: [查看验证码] [申请删除种子] [显示终止码]<BR/>被控端: [申请解除]<BR/>历史配对记录</FONT>>,
+            label=<配对信息页 (FLAG_SECURE)<BR/><FONT POINT-SIZE="8" COLOR="#616161">Tab: [当前配对] / [历史记录]<BR/>当前: 设备名 / 指纹 / 会话ID / 状态<BR/>管控端: [查看验证码] [显示终止码]<BR/>被控端: [申请解除]<BR/>历史: 活跃会话列表 + 归档列表<BR/>被控端支持多选删除</FONT>>,
             fillcolor="#EDE7F6",
             color="#5E35B1"
         ];
@@ -464,7 +464,7 @@ digraph PeerLockUI {
         ];
 
         LOG [
-            label=<调试日志页<BR/><FONT POINT-SIZE="8" COLOR="#616161">启用调试日志 Switch<BR/>高级调试模式 Switch (L2解锁后可见)<BR/>级别过滤 ALL/V/D/I/W/E<BR/>日志列表 等级+Tag+内容<BR/>[刷新] [清除] [复制到剪贴板]</FONT>>,
+            label=<调试日志页<BR/><FONT POINT-SIZE="8" COLOR="#616161">调试日志 + 审计日志合并显示<BR/>高级调试模式 Switch (L2解锁后可见)<BR/>级别过滤 ALL/V/D/I/W/E<BR/>日志列表 等级+Tag+内容<BR/>[刷新] [清除] [复制到剪贴板]</FONT>>,
             fillcolor="#EDE7F6",
             color="#5E35B1"
         ];
@@ -554,7 +554,7 @@ digraph PeerLockUI {
     // =====================================================================
     //  连线 — 被控端内部
     // =====================================================================
-    CDH -> UR_QUICK [label="点击应用卡片", color="#E65100", penwidth=1.8];
+    CDH -> UR_QUICK [label="点击应用卡片\n/ 申请解锁", color="#E65100", penwidth=1.8];
     CDH -> ST [label="使用统计", color="#E65100"];
     CDH -> RC_IDLE [label="接收指令", color="#E65100"];
     CDH -> CP_APP [label="管理策略", color="#E65100"];
@@ -574,6 +574,7 @@ digraph PeerLockUI {
     SET -> DO1 [label="DO行→详情页\n(已设置: 取消DO)\n(未设置: ADB引导)", color="#C2185B"];
     SET -> PAIR_INFO [label="配对信息", color="#5E35B1"];
     SET -> IDENTITY [label="本机身份", color="#5E35B1"];
+    SET -> DEV_SEL [label="管控端:\n设备选择", color="#2E7D32", style=dashed];
     SET -> LOG [label="调试日志", color="#5E35B1"];
     SET -> BATTERY [label="电池未关闭时\n→ 引导对话框", color="#C2185B"];
 
@@ -619,7 +620,7 @@ digraph PeerLockUI {
                     <TD BORDER="1" STYLE="" BGCOLOR="#1565C0" WIDTH="30" HEIGHT="30"><FONT COLOR="WHITE">●</FONT></TD>
                     <TD ALIGN="LEFT">双圆 = 入口</TD>
                     <TD BORDER="1" STYLE="DASHED,ROUNDED" BGCOLOR="#FFCDD2" WIDTH="60" HEIGHT="30"> </TD>
-                    <TD ALIGN="LEFT">虚线框 = 设计预留</TD>
+                    <TD ALIGN="LEFT">虚线框 = 子流程</TD>
                 </TR>
                 <TR>
                     <TD COLSPAN="4" ALIGN="LEFT"><B>颜色分组</B></TD>
@@ -645,7 +646,7 @@ digraph PeerLockUI {
                 </TR>
                 <TR>
                     <TD COLSPAN="2" ALIGN="LEFT"><FONT COLOR="#5E35B1">━━</FONT> 共用/设置</TD>
-                    <TD COLSPAN="2" ALIGN="LEFT"><FONT COLOR="#9E9E9E">╌╌</FONT> 设计预留/返回</TD>
+                    <TD COLSPAN="2" ALIGN="LEFT"><FONT COLOR="#9E9E9E">╌╌</FONT> 返回/条件路径</TD>
                 </TR>
             </TABLE>
         >];
