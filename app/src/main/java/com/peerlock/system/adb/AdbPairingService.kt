@@ -1,6 +1,5 @@
 package com.peerlock.system.adb
 
-import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -290,7 +289,7 @@ class AdbPairingService : Service() {
         manager.createNotificationChannel(channel)
     }
 
-    private fun buildDiscoveryNotification(): Notification {
+    private fun buildDiscoveryNotification(): android.app.Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("PeerLock")
             .setContentText("正在搜索 ADB 配对服务...")

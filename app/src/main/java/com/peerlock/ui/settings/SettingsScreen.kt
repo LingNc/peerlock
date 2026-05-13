@@ -48,6 +48,7 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     // 监听 onResume，刷新电池优化状态
+    @Suppress("DEPRECATION")
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->

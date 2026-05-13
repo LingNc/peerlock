@@ -44,13 +44,16 @@ internal class AdbMdns(
     private fun onDiscoveryStop() { registered = false }
 
     private fun onServiceFound(info: NsdServiceInfo) {
+        @Suppress("DEPRECATION")
         nsdManager.resolveService(info, resolveListener)
     }
 
     private fun onServiceResolved(resolvedService: NsdServiceInfo) {
         if (!running) return
+        @Suppress("DEPRECATION")
+        val hostAddr = resolvedService.host?.hostAddress
         val isLocal = NetworkInterface.getNetworkInterfaces()?.asSequence()?.any { iface ->
-            iface.inetAddresses.asSequence().any { resolvedService.host?.hostAddress == it.hostAddress }
+            iface.inetAddresses.asSequence().any { hostAddr == it.hostAddress }
         } ?: false
         if (isLocal && isPortAvailable(resolvedService.port)) {
             serviceName = resolvedService.serviceName

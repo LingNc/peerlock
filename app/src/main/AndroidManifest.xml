@@ -42,7 +42,7 @@
         <service
             android:name=".system.adb.AdbPairingService"
             android:exported="false"
-            android:foregroundServiceType="connectedDevice" />
+            android:foregroundServiceType="specialUse" />
 
         <receiver
             android:name=".system.deviceadmin.PeerLockDeviceAdminReceiver"
