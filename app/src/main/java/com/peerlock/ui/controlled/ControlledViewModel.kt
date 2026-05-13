@@ -9,6 +9,7 @@ import com.peerlock.data.seed.SeedManager
 import com.peerlock.data.usage.UsageStatsCollector
 import com.peerlock.domain.policy.PolicyEngine
 import com.peerlock.domain.policy.RestrictionPolicy
+import com.peerlock.domain.repository.AuditLog
 import com.peerlock.domain.repository.StorageRepository
 import com.peerlock.domain.request.DeviceInfo
 import com.peerlock.domain.request.InstalledApp
@@ -84,6 +85,14 @@ class ControlledViewModel @Inject constructor(
             )
             if (result != null) {
                 _uiState.value = _uiState.value.copy(requestQrCode = result)
+                storageRepository.insertAuditLog(
+                    AuditLog(
+                        timestamp = System.currentTimeMillis(),
+                        action = "UNLOCK_REQUEST",
+                        targetPackage = targetPackage,
+                        detail = "生成解锁请求: ${durationMinutes}分钟",
+                    )
+                )
             } else {
                 _uiState.value = _uiState.value.copy(error = "生成请求失败（频率限制或密钥缺失）")
             }
@@ -111,6 +120,14 @@ class ControlledViewModel @Inject constructor(
                 val desc = if (packages.size == 1) packages[0] else "全部受限应用"
                 _uiState.value = _uiState.value.copy(
                     quickCodeResult = "已解锁 $desc，${durationMinutes} 分钟后自动暂停",
+                )
+                storageRepository.insertAuditLog(
+                    AuditLog(
+                        timestamp = System.currentTimeMillis(),
+                        action = "UNLOCK_QUICK_CODE",
+                        targetPackage = desc,
+                        detail = "快速码解锁: ${durationMinutes}分钟",
+                    )
                 )
             } else {
                 _uiState.value = _uiState.value.copy(error = "验证码错误")

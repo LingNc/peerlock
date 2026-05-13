@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.data.seed.SeedManager
+import com.peerlock.domain.repository.AuditLog
+import com.peerlock.domain.repository.StorageRepository
 import com.peerlock.system.deviceadmin.DeviceOwnerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -38,6 +40,7 @@ class SettingsViewModel @Inject constructor(
     private val securePrefs: SecurePrefs,
     private val deviceOwnerManager: DeviceOwnerManager,
     private val seedManager: SeedManager,
+    private val storageRepository: StorageRepository,
 ) : ViewModel() {
 
     private val prefs = application.getSharedPreferences("peerlock_settings", 0)
@@ -92,6 +95,14 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             securePrefs.clearPairingData()
             seedManager.clearSeeds()
+            storageRepository.insertAuditLog(
+                AuditLog(
+                    timestamp = System.currentTimeMillis(),
+                    action = "IDENTITY_RESET",
+                    targetPackage = null,
+                    detail = "身份重置: 清除配对数据和种子",
+                )
+            )
             _uiState.value = _uiState.value.copy(showResetConfirm = false, resetComplete = true)
         }
     }

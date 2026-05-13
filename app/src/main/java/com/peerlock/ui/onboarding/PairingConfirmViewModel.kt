@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.peerlock.data.db.dao.PairingSessionDao
 import com.peerlock.data.prefs.SecurePrefs
+import com.peerlock.domain.repository.AuditLog
+import com.peerlock.domain.repository.StorageRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +32,7 @@ class PairingConfirmViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val pairingSessionDao: PairingSessionDao,
     private val securePrefs: SecurePrefs,
+    private val storageRepository: StorageRepository,
 ) : ViewModel() {
 
     val role: String = savedStateHandle["role"] ?: "controlled"
@@ -70,6 +73,16 @@ class PairingConfirmViewModel @Inject constructor(
         securePrefs.isPaired = true
         securePrefs.role = role
         _uiState.value = _uiState.value.copy(isConfirmed = true)
+        viewModelScope.launch {
+            storageRepository.insertAuditLog(
+                AuditLog(
+                    timestamp = System.currentTimeMillis(),
+                    action = "PAIRING_COMPLETE",
+                    targetPackage = null,
+                    detail = "配对确认完成，角色: $role",
+                )
+            )
+        }
     }
 
     private fun computeFingerprint(publicKeyBase64: String): String {

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.peerlock.data.prefs.SecurePrefs
 import com.peerlock.data.seed.SeedManager
 import com.peerlock.domain.policy.RestrictionPolicy
+import com.peerlock.domain.repository.AuditLog
 import com.peerlock.domain.repository.StorageRepository
 import com.peerlock.domain.request.ProcessResult
 import com.peerlock.domain.request.RequestEnvelope
@@ -150,6 +151,19 @@ class ControllerViewModel @Inject constructor(
                 else -> null
             }
             if (qr != null) {
+                storageRepository.insertAuditLog(
+                    AuditLog(
+                        timestamp = System.currentTimeMillis(),
+                        action = "REQUEST_APPROVE",
+                        targetPackage = request.payload.let {
+                            when (it) {
+                                is RequestPayload.UnlockRequest -> it.targetPackage
+                                is RequestPayload.ConfigRequest -> null
+                            }
+                        },
+                        detail = "批准请求: ${request.type}",
+                    )
+                )
                 _uiState.value = _uiState.value.copy(
                     approvalStep = ApprovalStep.SHOWING_RESPONSE,
                     responseQrCode = qr,
@@ -173,6 +187,14 @@ class ControllerViewModel @Inject constructor(
                 else -> null
             }
             if (qr != null) {
+                storageRepository.insertAuditLog(
+                    AuditLog(
+                        timestamp = System.currentTimeMillis(),
+                        action = "REQUEST_REJECT",
+                        targetPackage = null,
+                        detail = "拒绝请求: ${request.type}, 原因: $reason",
+                    )
+                )
                 _uiState.value = _uiState.value.copy(
                     approvalStep = ApprovalStep.SHOWING_RESPONSE,
                     responseQrCode = qr,
