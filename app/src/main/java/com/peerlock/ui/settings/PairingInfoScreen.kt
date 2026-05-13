@@ -97,6 +97,17 @@ fun PairingInfoScreen(
             )
         }
     ) { padding ->
+        if (uiState.isLoading) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("加载中...", style = MaterialTheme.typography.bodyMedium)
+            }
+        } else {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -255,6 +266,7 @@ fun PairingInfoScreen(
 
             item { Spacer(modifier = Modifier.height(16.dp)) }
         }
+        } // else (not loading)
     }
 }
 

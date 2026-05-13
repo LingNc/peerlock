@@ -66,52 +66,60 @@ class PairingInfoViewModel @Inject constructor(
 
     private fun loadPairingInfo() {
         viewModelScope.launch {
-            val role = securePrefs.role ?: ""
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+            try {
+                val role = securePrefs.role ?: ""
+                val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
 
-            // 加载所有会话（包括已归档的）
-            val allSessions = pairingSessionDao.getAll()
-            val activeSessions = allSessions.filter { it.status in listOf("ACTIVE", "WAITING", "REVOKED") }
+                // 加载所有会话（包括已归档的）
+                val allSessions = pairingSessionDao.getAll()
+                val activeSessions = allSessions.filter { it.status in listOf("ACTIVE", "WAITING", "REVOKED") }
 
-            if (activeSessions.isNotEmpty()) {
-                val current = activeSessions.firstOrNull { it.status == "ACTIVE" }
-                    ?: activeSessions.first()
-                // 历史 = 当前会话之外的所有会话（包括归档的）
-                val history = allSessions.filter { it.sessionId != current.sessionId }.map {
-                    HistorySession(it.sessionId, it.peerDeviceName, it.status, it.createdAt)
+                if (activeSessions.isNotEmpty()) {
+                    val current = activeSessions.firstOrNull { it.status == "ACTIVE" }
+                        ?: activeSessions.first()
+                    // 历史 = 当前会话之外的所有会话（包括归档的）
+                    val history = allSessions.filter { it.sessionId != current.sessionId }.map {
+                        HistorySession(it.sessionId, it.peerDeviceName, it.status, it.createdAt)
+                    }
+                    _uiState.value = PairingInfoUiState(
+                        isPaired = true,
+                        role = role,
+                        peerDeviceName = current.peerDeviceName,
+                        fingerprint = current.identityFingerprint,
+                        pairingTime = dateFormat.format(Date(current.createdAt)),
+                        sessionId = current.sessionId.take(8) + if (current.sessionId.length > 8) "..." else "",
+                        sessionIdFull = current.sessionId,
+                        status = current.status,
+                        historySessions = history,
+                        isLoading = false,
+                    )
+                } else {
+                    // 没有活跃会话 — 可能已身份重置或解除配对
+                    val isPaired = securePrefs.isPaired
+                    val sessionId = securePrefs.sessionId ?: ""
+                    val peerKey = securePrefs.peerPublicKey ?: ""
+                    // 仍然显示归档的历史记录
+                    val history = allSessions.map {
+                        HistorySession(it.sessionId, it.peerDeviceName, it.status, it.createdAt)
+                    }
+                    _uiState.value = PairingInfoUiState(
+                        isPaired = isPaired,
+                        role = role,
+                        peerDeviceName = if (isPaired) "对方设备" else "未配对",
+                        fingerprint = computeFingerprint(peerKey),
+                        pairingTime = if (isPaired) dateFormat.format(Date()) else "",
+                        sessionId = if (isPaired) sessionId.take(8) + if (sessionId.length > 8) "..." else "" else "",
+                        sessionIdFull = sessionId,
+                        status = if (isPaired) "ACTIVE" else "未配对",
+                        historySessions = history,
+                        isLoading = false,
+                    )
                 }
-                _uiState.value = PairingInfoUiState(
-                    isPaired = true,
-                    role = role,
-                    peerDeviceName = current.peerDeviceName,
-                    fingerprint = current.identityFingerprint,
-                    pairingTime = dateFormat.format(Date(current.createdAt)),
-                    sessionId = current.sessionId.take(8) + if (current.sessionId.length > 8) "..." else "",
-                    sessionIdFull = current.sessionId,
-                    status = current.status,
-                    historySessions = history,
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                )
-            } else {
-                // 没有活跃会话 — 可能已身份重置或解除配对
-                val isPaired = securePrefs.isPaired
-                val sessionId = securePrefs.sessionId ?: ""
-                val peerKey = securePrefs.peerPublicKey ?: ""
-                // 仍然显示归档的历史记录
-                val history = allSessions.map {
-                    HistorySession(it.sessionId, it.peerDeviceName, it.status, it.createdAt)
-                }
-                _uiState.value = PairingInfoUiState(
-                    isPaired = isPaired,
-                    role = role,
-                    peerDeviceName = if (isPaired) "对方设备" else "未配对",
-                    fingerprint = computeFingerprint(peerKey),
-                    pairingTime = if (isPaired) dateFormat.format(Date()) else "",
-                    sessionId = if (isPaired) sessionId.take(8) + if (sessionId.length > 8) "..." else "" else "",
-                    sessionIdFull = sessionId,
-                    status = if (isPaired) "ACTIVE" else "未配对",
-                    historySessions = history,
-                    isLoading = false,
+                    isPaired = securePrefs.isPaired,
+                    role = securePrefs.role ?: "",
                 )
             }
         }
