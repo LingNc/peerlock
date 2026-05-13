@@ -112,6 +112,33 @@ fun PairingScreen(
                         OutlinedButton(onClick = { showScanner = true }) {
                             Text("扫描响应码")
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (!showPasteInput) {
+                            OutlinedButton(onClick = { showPasteInput = true }) {
+                                Text("粘贴响应数据")
+                            }
+                        } else {
+                            OutlinedTextField(
+                                value = pasteText,
+                                onValueChange = { pasteText = it },
+                                label = { Text("粘贴控制方的响应数据") },
+                                modifier = Modifier.fillMaxWidth(),
+                                minLines = 2,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    if (pasteText.isNotBlank()) {
+                                        viewModel.onQrScanned(pasteText.trim())
+                                        showPasteInput = false
+                                        pasteText = ""
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("确认")
+                            }
+                        }
                     } else {
                         Text("请扫描被控端的二维码", style = MaterialTheme.typography.titleMedium)
                         Spacer(modifier = Modifier.height(16.dp))
