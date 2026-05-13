@@ -35,7 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.peerlock.ui.common.QrCodeDisplay
-import com.peerlock.ui.common.QrScanLauncher
+import com.peerlock.ui.common.QrScannerScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,21 +46,25 @@ fun PairingScreen(
     viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val scanTrigger by viewModel.scanTrigger.collectAsState()
     val clipboardManager = LocalClipboardManager.current
     var showPasteInput by remember { mutableStateOf(false) }
     var pasteText by remember { mutableStateOf("") }
+    var showScanner by remember { mutableStateOf(false) }
 
     LaunchedEffect(role) {
         viewModel.selectRole(role)
     }
 
-    QrScanLauncher(
-        onResult = { result ->
-            result?.let { viewModel.onQrScanned(it) }
-        },
-        trigger = scanTrigger,
-    )
+    if (showScanner) {
+        QrScannerScreen(
+            onResult = { result ->
+                showScanner = false
+                viewModel.onQrScanned(result)
+            },
+            onClose = { showScanner = false },
+        )
+        return
+    }
 
     Scaffold(
         topBar = {
@@ -105,7 +109,7 @@ fun PairingScreen(
                             textAlign = TextAlign.Center,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        OutlinedButton(onClick = { viewModel.requestScan() }) {
+                        OutlinedButton(onClick = { showScanner = true }) {
                             Text("扫描响应码")
                         }
                     } else {
@@ -117,7 +121,7 @@ fun PairingScreen(
                             textAlign = TextAlign.Center,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        OutlinedButton(onClick = { viewModel.requestScan() }) {
+                        OutlinedButton(onClick = { showScanner = true }) {
                             Text("扫描二维码")
                         }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -163,7 +167,7 @@ fun PairingScreen(
                     } else {
                         Text("请扫描控制方的响应码", style = MaterialTheme.typography.titleMedium)
                         Spacer(modifier = Modifier.height(16.dp))
-                        OutlinedButton(onClick = { viewModel.requestScan() }) {
+                        OutlinedButton(onClick = { showScanner = true }) {
                             Text("扫描响应码")
                         }
                         Spacer(modifier = Modifier.height(8.dp))

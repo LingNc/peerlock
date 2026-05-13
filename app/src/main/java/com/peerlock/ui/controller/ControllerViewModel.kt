@@ -55,9 +55,6 @@ class ControllerViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ControllerUiState())
     val uiState: StateFlow<ControllerUiState> = _uiState.asStateFlow()
 
-    private val _scanTrigger = MutableStateFlow(0)
-    val scanTrigger: StateFlow<Int> = _scanTrigger.asStateFlow()
-
     init {
         loadPolicies()
         startTotpRefreshLoop()
@@ -106,11 +103,6 @@ class ControllerViewModel @Inject constructor(
             }
             _uiState.value = _uiState.value.copy(otpauthUris = uris)
         }
-    }
-
-    fun requestApprovalScan() {
-        _uiState.value = _uiState.value.copy(approvalStep = ApprovalStep.SCANNING)
-        _scanTrigger.value++
     }
 
     fun onQrScanned(scannedData: String) {

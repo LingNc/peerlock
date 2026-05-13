@@ -35,7 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.peerlock.ui.common.QrCodeDisplay
-import com.peerlock.ui.common.QrScanLauncher
+import com.peerlock.ui.common.QrScannerScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,14 +44,18 @@ fun RequestApprovalScreen(
     viewModel: ControllerViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val scanTrigger by viewModel.scanTrigger.collectAsState()
+    var showScanner by remember { mutableStateOf(false) }
 
-    QrScanLauncher(
-        onResult = { result ->
-            result?.let { viewModel.onQrScanned(it) }
-        },
-        trigger = scanTrigger,
-    )
+    if (showScanner) {
+        QrScannerScreen(
+            onResult = { result ->
+                showScanner = false
+                viewModel.onQrScanned(result)
+            },
+            onClose = { showScanner = false },
+        )
+        return
+    }
 
     Scaffold(
         topBar = {
@@ -79,7 +83,7 @@ fun RequestApprovalScreen(
                 ApprovalStep.IDLE -> {
                     Text("扫描被控端的请求二维码", style = MaterialTheme.typography.titleMedium)
                     Button(
-                        onClick = { viewModel.requestApprovalScan() },
+                        onClick = { showScanner = true },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text("开始扫描")

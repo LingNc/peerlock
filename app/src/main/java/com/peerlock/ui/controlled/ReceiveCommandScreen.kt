@@ -30,7 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.peerlock.ui.common.QrScanLauncher
+import com.peerlock.ui.common.QrScannerScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,9 +39,19 @@ fun ReceiveCommandScreen(
     viewModel: ReceiveCommandViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val scanTrigger by viewModel.scanTrigger.collectAsState()
     var pasteInput by remember { mutableStateOf("") }
     var showScanner by remember { mutableStateOf(false) }
+
+    if (showScanner) {
+        QrScannerScreen(
+            onResult = { result ->
+                showScanner = false
+                viewModel.onCommandScanned(result)
+            },
+            onClose = { showScanner = false },
+        )
+        return
+    }
 
     Scaffold(
         topBar = {
@@ -71,10 +81,7 @@ fun ReceiveCommandScreen(
 
                     item {
                         Button(
-                            onClick = {
-                                showScanner = true
-                                viewModel.requestScan()
-                            },
+                            onClick = { showScanner = true },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text("扫描指令")
@@ -101,20 +108,6 @@ fun ReceiveCommandScreen(
                             enabled = pasteInput.isNotBlank(),
                         ) {
                             Text("确认")
-                        }
-                    }
-
-                    if (showScanner) {
-                        item {
-                            QrScanLauncher(
-                                onResult = { data ->
-                                    if (data != null) {
-                                        viewModel.onCommandScanned(data)
-                                        showScanner = false
-                                    }
-                                },
-                                trigger = scanTrigger,
-                            )
                         }
                     }
                 }

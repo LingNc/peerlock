@@ -15,6 +15,7 @@ turbine = "1.2.0"
 bouncycastle = "1.79"
 zxing = "3.5.3"
 serialization = "1.7.3"
+camerax = "1.4.1"
 
 [libraries]
 # Compose
@@ -49,7 +50,12 @@ bouncycastle = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.re
 
 # ZXing（二维码）
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
-zxing-android-embedded = { group = "com.journeyapps", name = "zxing-android-embedded", version = "4.3.0" }
+
+# CameraX
+camerax-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
+camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
 
 # 协程
 coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }

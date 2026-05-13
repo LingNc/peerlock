@@ -39,14 +39,7 @@ class ReceiveCommandViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ReceiveCommandUiState())
     val uiState: StateFlow<ReceiveCommandUiState> = _uiState.asStateFlow()
 
-    private val _scanTrigger = MutableStateFlow(0)
-    val scanTrigger: StateFlow<Int> = _scanTrigger.asStateFlow()
-
     private var pendingResponse: ResponseEnvelope? = null
-
-    fun requestScan() {
-        _scanTrigger.value++
-    }
 
     fun onCommandScanned(data: String) {
         viewModelScope.launch {
