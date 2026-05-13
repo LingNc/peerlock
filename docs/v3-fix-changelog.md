@@ -2,7 +2,7 @@
 
 ## 概述
 
-V3 主体功能完成后的增量修复，涵盖 10 项问题修复和 1 项功能增强。
+V3 主体功能完成后的增量修复，涵盖 12 项问题修复和 1 项功能增强。
 
 ---
 
@@ -83,6 +83,25 @@ NavHost 添加默认过渡动画：200ms slide-in/fade（含 pop 方向反转）
 
 - `foregroundServiceType` 从 `connectedDevice` 改为 `specialUse`（避免权限问题）
 - 移除未使用的 `android.app.Notification` import
+
+### 11. PairingInfoScreen 数据库异常崩溃防护
+
+**文件**: `ui/settings/PairingInfoViewModel.kt`, `ui/settings/PairingInfoScreen.kt`
+
+- `loadPairingInfo()` 添加 try-catch，数据库异常时优雅降级而非崩溃
+- Screen 添加 `isLoading` 状态守卫，加载完成前显示提示文本
+
+### 12. 跨设备配对 EC 公钥格式不兼容
+
+**文件**: `domain/crypto/CryptoEngine.kt`, `P256CryptoEngine.kt`, `X25519CryptoEngine.kt`, `AdaptiveCryptoEngine.kt`, `domain/pairing/PairingModels.kt`, `PairingProtocolImpl.kt`, `ui/onboarding/OnboardingViewModel.kt`, `data/db/entity/PairingSessionEntity.kt`, `data/db/PeerLockDatabase.kt`, `data/pairing/PairingRepository.kt`, `PairingRepositoryImpl.kt`
+
+- 根因：`AdaptiveCryptoEngine` 在 API 33+ 使用 X25519（32 字节公钥），API 30-32 使用 P256（65 字节公钥），跨设备配对时密钥格式不兼容
+- `PairingRequest`/`PairingResponse` 新增 `curve` 字段标识公钥曲线类型
+- `CryptoEngine` 接口新增 `curveName` 属性
+- `PairingProtocolImpl` 使用对端曲线引擎加密/验签，自身引擎解密
+- QR 码传输完整 JSON 对象（含 curve），向后兼容纯公钥格式
+- `P256CryptoEngine.ecParamSpec` 改为 lazy 初始化（verify 无需 generateKeyPair）
+- `PairingSessionEntity` 新增 `peerCurve` 字段 + DB Migration 2→3
 
 ---
 
