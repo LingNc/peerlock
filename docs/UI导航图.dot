@@ -112,7 +112,7 @@ digraph PeerLockUI {
             ];
             DO_ALREADY [label="已设置 → 继续", fillcolor="#FCE4EC", color="#E91E63"];
             DO_NOT [
-                label=<未设置: ADB引导<BR/><FONT POINT-SIZE="8" COLOR="#616161">一键设置(mDNS+SPAKE2) / 手动命令<BR/>无跳过选项</FONT>>,
+                label=<未设置: ADB引导<BR/><FONT POINT-SIZE="8" COLOR="#616161">一键设置(mDNS+SPAKE2+通知栏配对码)<BR/>/ 手动ADB命令 无跳过选项</FONT>>,
                 fillcolor="#FCE4EC",
                 color="#E91E63"
             ];
