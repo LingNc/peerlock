@@ -43,7 +43,7 @@ fun QrScanLauncher(
                 .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
                 .setPrompt("扫描二维码")
                 .setBeepEnabled(false)
-                .setOrientationLocked(true)
+                .setOrientationLocked(false)
             scanLauncher.launch(options)
         }
     }
@@ -56,7 +56,7 @@ fun QrScanLauncher(
                     .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
                     .setPrompt("扫描二维码")
                     .setBeepEnabled(false)
-                    .setOrientationLocked(true)
+                    .setOrientationLocked(false)
                 scanLauncher.launch(options)
             } else {
                 permissionLauncher.launch(Manifest.permission.CAMERA)

@@ -132,7 +132,11 @@ fun PeerLockNavHost(
                         popUpTo(0) { inclusive = true }
                     }
                 },
-                onBack = { navController.popBackStack() },
+                onBack = {
+                    navController.navigate(Routes.ROLE_SELECTION) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
             )
         }
 
