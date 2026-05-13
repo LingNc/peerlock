@@ -40,6 +40,10 @@ data class PairingInfoUiState(
     val isLoading: Boolean = true,
     val showCodes: Boolean = false,
     val totpCodes: List<TotpCodeInfo> = emptyList(),
+    val deleteTargetId: String? = null,
+    val deleteCountdown: Int = 0,
+    val selectedIds: Set<String> = emptySet(),
+    val multiSelectMode: Boolean = false,
 )
 
 data class HistorySession(
@@ -47,6 +51,7 @@ data class HistorySession(
     val peerDeviceName: String,
     val status: String,
     val createdAt: Long,
+    val role: String = "",
 )
 
 @HiltViewModel
@@ -79,7 +84,7 @@ class PairingInfoViewModel @Inject constructor(
                         ?: activeSessions.first()
                     // 历史 = 当前会话之外的所有会话（包括归档的）
                     val history = allSessions.filter { it.sessionId != current.sessionId }.map {
-                        HistorySession(it.sessionId, it.peerDeviceName, it.status, it.createdAt)
+                        HistorySession(it.sessionId, it.peerDeviceName, it.status, it.createdAt, it.role)
                     }
                     _uiState.value = PairingInfoUiState(
                         isPaired = true,
@@ -100,7 +105,7 @@ class PairingInfoViewModel @Inject constructor(
                     val peerKey = securePrefs.peerPublicKey ?: ""
                     // 仍然显示归档的历史记录
                     val history = allSessions.map {
-                        HistorySession(it.sessionId, it.peerDeviceName, it.status, it.createdAt)
+                        HistorySession(it.sessionId, it.peerDeviceName, it.status, it.createdAt, it.role)
                     }
                     _uiState.value = PairingInfoUiState(
                         isPaired = isPaired,
@@ -169,6 +174,62 @@ class PairingInfoViewModel @Inject constructor(
         viewModelScope.launch {
             seedManager.clearSeeds()
             pairingSessionDao.archive(sessionId)
+            loadPairingInfo()
+        }
+    }
+
+    fun archiveSession(sessionId: String) {
+        viewModelScope.launch {
+            pairingSessionDao.archive(sessionId)
+            loadPairingInfo()
+        }
+    }
+
+    fun requestDelete(sessionId: String) {
+        _uiState.value = _uiState.value.copy(deleteTargetId = sessionId, deleteCountdown = 5)
+        viewModelScope.launch {
+            for (i in 5 downTo 0) {
+                _uiState.value = _uiState.value.copy(deleteCountdown = i)
+                if (i > 0) delay(1000)
+            }
+        }
+    }
+
+    fun confirmDelete() {
+        val targetId = _uiState.value.deleteTargetId ?: return
+        if (_uiState.value.deleteCountdown > 0) return
+        viewModelScope.launch {
+            pairingSessionDao.delete(targetId)
+            _uiState.value = _uiState.value.copy(deleteTargetId = null)
+            loadPairingInfo()
+        }
+    }
+
+    fun cancelDelete() {
+        _uiState.value = _uiState.value.copy(deleteTargetId = null, deleteCountdown = 0)
+    }
+
+    fun toggleMultiSelect() {
+        val active = !_uiState.value.multiSelectMode
+        _uiState.value = _uiState.value.copy(
+            multiSelectMode = active,
+            selectedIds = if (!active) emptySet() else _uiState.value.selectedIds,
+        )
+    }
+
+    fun toggleSelect(sessionId: String) {
+        val current = _uiState.value.selectedIds
+        _uiState.value = _uiState.value.copy(
+            selectedIds = if (sessionId in current) current - sessionId else current + sessionId,
+        )
+    }
+
+    fun deleteSelected() {
+        val ids = _uiState.value.selectedIds
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            ids.forEach { pairingSessionDao.delete(it) }
+            _uiState.value = _uiState.value.copy(selectedIds = emptySet(), multiSelectMode = false)
             loadPairingInfo()
         }
     }

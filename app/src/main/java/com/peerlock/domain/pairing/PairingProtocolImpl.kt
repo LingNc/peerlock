@@ -1,5 +1,7 @@
 package com.peerlock.domain.pairing
 
+import com.peerlock.data.db.dao.PairingSessionDao
+import com.peerlock.data.db.entity.PairingSessionEntity
 import com.peerlock.data.pairing.PairingRepository
 import com.peerlock.data.seed.SeedManager
 import com.peerlock.domain.crypto.CryptoEngine
@@ -17,6 +19,7 @@ class PairingProtocolImpl(
     private val totpEngine: TotpEngine,
     private val seedManager: SeedManager,
     private val pairingRepository: PairingRepository,
+    private val pairingSessionDao: PairingSessionDao,
 ) : PairingProtocol {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -30,6 +33,29 @@ class PairingProtocolImpl(
         pairingRepository.storeMyPublicKey(keyPair.publicKey)
         pairingRepository.storeSessionId(sessionId)
         pairingRepository.storeRole("controlled")
+
+        // 归档所有旧的 WAITING 会话
+        val existing = pairingSessionDao.getByStatus("WAITING")
+        for (old in existing) {
+            pairingSessionDao.archive(old.sessionId)
+        }
+
+        // 创建 WAITING 会话记录
+        val fingerprint = computeFingerprint(keyPair.publicKey)
+        val entity = PairingSessionEntity(
+            sessionId = sessionId,
+            role = "controlled",
+            peerDeviceName = "(等待配对)",
+            peerPublicKey = "",
+            myPublicKey = encodeBase64(keyPair.publicKey),
+            signingPublicKey = null,
+            encryptedSeeds = "{}",
+            status = "WAITING",
+            identityFingerprint = fingerprint,
+            createdAt = System.currentTimeMillis(),
+            peerCurve = cryptoEngine.curveName,
+        )
+        pairingSessionDao.insert(entity)
 
         return PairingRequest(
             id = sessionId,
@@ -162,16 +188,31 @@ class PairingProtocolImpl(
 
             val myPub = pairingRepository.getMyPublicKey()
             val fingerprint = computeFingerprint(controllerEcdhPubKey)
-            pairingRepository.createSession(
-                sessionId = payload.id,
-                role = "controlled",
-                peerDeviceName = payload.name,
-                peerPublicKey = controllerEcdhPubKey,
-                myPublicKey = myPub ?: ByteArray(0),
-                signingPublicKey = controllerSignPubKey,
-                identityFingerprint = fingerprint,
-                peerCurve = peerCurve,
-            )
+
+            // 更新 WAITING 会话为 ACTIVE，若无则新建
+            val waitingSession = pairingSessionDao.getById(payload.id)
+            if (waitingSession != null && waitingSession.status == "WAITING") {
+                val updated = waitingSession.copy(
+                    status = "ACTIVE",
+                    peerDeviceName = payload.name,
+                    peerPublicKey = encodeBase64(controllerEcdhPubKey),
+                    signingPublicKey = encodeBase64(controllerSignPubKey),
+                    identityFingerprint = fingerprint,
+                    peerCurve = peerCurve,
+                )
+                pairingSessionDao.update(updated)
+            } else {
+                pairingRepository.createSession(
+                    sessionId = payload.id,
+                    role = "controlled",
+                    peerDeviceName = payload.name,
+                    peerPublicKey = controllerEcdhPubKey,
+                    myPublicKey = myPub ?: ByteArray(0),
+                    signingPublicKey = controllerSignPubKey,
+                    identityFingerprint = fingerprint,
+                    peerCurve = peerCurve,
+                )
+            }
 
             seeds.values.forEach { it.fill(0) }
 

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -18,6 +19,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -71,6 +73,32 @@ fun PairingInfoScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = null }) { Text("取消") }
+            },
+        )
+    }
+
+    // 删除历史记录确认对话框（5 秒倒计时）
+    if (uiState.deleteTargetId != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel.cancelDelete() },
+            title = { Text("确认删除记录", color = MaterialTheme.colorScheme.error) },
+            text = {
+                Text(
+                    if (uiState.deleteCountdown > 0)
+                        "删除后此配对记录将永久消失，无法恢复。\n请等待 ${uiState.deleteCountdown} 秒..."
+                    else
+                        "删除后此配对记录将永久消失，无法恢复。确认删除？"
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.confirmDelete() },
+                    enabled = uiState.deleteCountdown == 0,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                ) { Text("确认删除") }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.cancelDelete() }) { Text("取消") }
             },
         )
     }
@@ -234,14 +262,27 @@ fun PairingInfoScreen(
             if (uiState.historySessions.isNotEmpty()) {
                 item {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    Text("历史配对记录", style = MaterialTheme.typography.titleMedium)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("历史配对记录", style = MaterialTheme.typography.titleMedium)
+                        TextButton(onClick = { viewModel.toggleMultiSelect() }) {
+                            Text(if (uiState.multiSelectMode) "取消" else "多选")
+                        }
+                    }
                 }
 
                 items(uiState.historySessions) { session ->
+                    val isSelected = session.sessionId in uiState.selectedIds
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            containerColor = if (isSelected)
+                                MaterialTheme.colorScheme.primaryContainer
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant,
                         ),
                     ) {
                         Row(
@@ -249,16 +290,67 @@ fun PairingInfoScreen(
                                 .fillMaxWidth()
                                 .padding(12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Column {
-                                Text(session.peerDeviceName, style = MaterialTheme.typography.bodyMedium)
-                                Text(session.status, style = MaterialTheme.typography.bodySmall)
+                            if (uiState.multiSelectMode) {
+                                Checkbox(
+                                    checked = isSelected,
+                                    onCheckedChange = { viewModel.toggleSelect(session.sessionId) },
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                             }
-                            if (session.status == "REVOKED") {
-                                TextButton(onClick = { showDeleteConfirm = session.sessionId }) {
-                                    Text("删除种子", style = MaterialTheme.typography.bodySmall)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(session.peerDeviceName, style = MaterialTheme.typography.bodyMedium)
+                                Row {
+                                    Text(
+                                        when (session.status) {
+                                            "WAITING" -> "等待配对"
+                                            "ACTIVE" -> "已配对"
+                                            "REVOKED" -> "已撤销"
+                                            "ARCHIVED" -> "已归档"
+                                            else -> session.status
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = when (session.status) {
+                                            "WAITING" -> MaterialTheme.colorScheme.primary
+                                            "REVOKED" -> MaterialTheme.colorScheme.error
+                                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                    )
+                                    Text(
+                                        " · ${session.role}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 }
                             }
+                            if (!uiState.multiSelectMode) {
+                                when (session.status) {
+                                    "WAITING" -> {
+                                        TextButton(onClick = { viewModel.archiveSession(session.sessionId) }) {
+                                            Text("归档", style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                    "REVOKED", "ARCHIVED" -> {
+                                        TextButton(onClick = { viewModel.requestDelete(session.sessionId) }) {
+                                            Text("删除", style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (uiState.multiSelectMode && uiState.selectedIds.isNotEmpty()) {
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { viewModel.deleteSelected() },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                        ) {
+                            Text("删除选中 (${uiState.selectedIds.size})")
                         }
                     }
                 }

@@ -72,8 +72,9 @@ object AppModule {
         totpEngine: TotpEngine,
         seedManager: SeedManager,
         pairingRepository: PairingRepository,
+        pairingSessionDao: com.peerlock.data.db.dao.PairingSessionDao,
     ): PairingProtocol = PairingProtocolImpl(
-        cryptoEngine, totpEngine, seedManager, pairingRepository
+        cryptoEngine, totpEngine, seedManager, pairingRepository, pairingSessionDao
     )
 
     @Provides @Singleton
