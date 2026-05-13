@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,6 +29,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -35,11 +37,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,6 +56,8 @@ fun EmergencyScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showDestroyConfirm by remember { mutableStateOf(false) }
     var l2TapCount by remember { mutableIntStateOf(0) }
+    val clipboardManager = LocalClipboardManager.current
+    val isController = uiState.role == "controller"
 
     // FLAG_SECURE 防截图
     val view = LocalView.current
@@ -81,8 +88,82 @@ fun EmergencyScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // L1 终止码
-            Text("L1 终止码", style = MaterialTheme.typography.titleMedium)
+            if (isController) {
+                // 管控端：显示终止码
+                Text("终止码", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "终止码用于解除与被控端的配对关系。使用后被控端的管控将被解除，加密材料将被清除。此操作不可逆。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                if (!uiState.showTerminateCode) {
+                    Button(
+                        onClick = { viewModel.startTerminateCodeCountdown() },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = uiState.terminateCodeCountdown == 0,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                        ),
+                    ) {
+                        Text(
+                            if (uiState.terminateCodeCountdown > 0)
+                                "请等待 ${uiState.terminateCodeCountdown} 秒"
+                            else
+                                "确认显示"
+                        )
+                    }
+
+                    LaunchedEffect(Unit) {
+                        viewModel.startTerminateCodeCountdown()
+                    }
+                } else {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text("当前终止码", style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                text = uiState.terminateCode,
+                                style = MaterialTheme.typography.headlineLarge.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 8.sp,
+                                ),
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                            Text(
+                                text = "${uiState.terminateCodeRemaining}s 后刷新",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (uiState.terminateCodeRemaining <= 5)
+                                    MaterialTheme.colorScheme.error
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            clipboardManager.setText(AnnotatedString(uiState.terminateCode))
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("复制终止码")
+                    }
+
+                    TextButton(
+                        onClick = { viewModel.hideTerminateCode() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("隐藏", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            } else {
+                // 被控端：输入终止码 + L2
+                Text("L1 终止码", style = MaterialTheme.typography.titleMedium)
             Text(
                 "使用终止码可解除配对并清除加密材料，但保留 Device Owner 权限和用户数据。",
                 style = MaterialTheme.typography.bodyMedium,
@@ -183,6 +264,8 @@ fun EmergencyScreen(
                     Text("L2 解除已执行", color = MaterialTheme.colorScheme.primary)
                 }
             }
+
+            } // end if/else isController
 
             uiState.error?.let { error ->
                 Text(text = error, color = MaterialTheme.colorScheme.error)

@@ -3,8 +3,13 @@ package com.peerlock.ui.emergency
 import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.peerlock.data.prefs.SecurePrefs
+import com.peerlock.data.seed.SeedManager
 import com.peerlock.domain.emergency.EmergencyManager
+import com.peerlock.domain.totp.KeyType
+import com.peerlock.domain.totp.TotpEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,16 +28,69 @@ data class EmergencyUiState(
     val l2ChallengeInput: String = "",
     val adbCommand: String? = null,
     val l2Executed: Boolean = false,
+    // 管控端终止码显示
+    val role: String = "",
+    val showTerminateCode: Boolean = false,
+    val terminateCodeCountdown: Int = 5,
+    val terminateCode: String = "",
+    val terminateCodeRemaining: Int = 0,
 )
 
 @HiltViewModel
 class EmergencyViewModel @Inject constructor(
     private val emergencyManager: EmergencyManager,
     private val application: Application,
+    private val securePrefs: SecurePrefs,
+    private val seedManager: SeedManager,
+    private val totpEngine: TotpEngine,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EmergencyUiState())
     val uiState: StateFlow<EmergencyUiState> = _uiState.asStateFlow()
+
+    init {
+        _uiState.value = _uiState.value.copy(role = securePrefs.role ?: "")
+    }
+
+    fun startTerminateCodeCountdown() {
+        _uiState.value = _uiState.value.copy(terminateCodeCountdown = 5)
+        viewModelScope.launch {
+            for (i in 5 downTo 0) {
+                _uiState.value = _uiState.value.copy(terminateCodeCountdown = i)
+                if (i > 0) delay(1000)
+            }
+        }
+    }
+
+    fun showTerminateCode() {
+        viewModelScope.launch {
+            val seed = seedManager.retrieveSeed(KeyType.DESTROY)
+            if (seed == null) {
+                _uiState.value = _uiState.value.copy(error = "终止码种子缺失")
+                return@launch
+            }
+            _uiState.value = _uiState.value.copy(showTerminateCode = true)
+            // 持续刷新终止码
+            while (_uiState.value.showTerminateCode) {
+                try {
+                    val code = totpEngine.generateCode(seed)
+                    val step = totpEngine.currentStep()
+                    val remaining = ((step + 1) * 30 - System.currentTimeMillis() / 1000).toInt()
+                    _uiState.value = _uiState.value.copy(
+                        terminateCode = code,
+                        terminateCodeRemaining = remaining.coerceAtLeast(0),
+                    )
+                } catch (_: Exception) {
+                    _uiState.value = _uiState.value.copy(terminateCode = "------")
+                }
+                delay(1000)
+            }
+        }
+    }
+
+    fun hideTerminateCode() {
+        _uiState.value = _uiState.value.copy(showTerminateCode = false, terminateCode = "")
+    }
 
     fun updateDestroyCode(code: String) {
         _uiState.value = _uiState.value.copy(destroyCode = code, error = null)

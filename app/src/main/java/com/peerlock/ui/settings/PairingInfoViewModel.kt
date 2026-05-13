@@ -146,7 +146,7 @@ class PairingInfoViewModel @Inject constructor(
     }
 
     private suspend fun refreshTotpCodes() {
-        val codes = listOf(KeyType.SETTING, KeyType.UNLOCK).mapNotNull { keyType ->
+        val codes = listOf(KeyType.SETTING, KeyType.UNLOCK, KeyType.DESTROY).mapNotNull { keyType ->
             val seed = seedManager.retrieveSeed(keyType) ?: return@mapNotNull null
             try {
                 val code = totpEngine.generateCode(seed)
