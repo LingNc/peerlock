@@ -1,5 +1,10 @@
 package com.peerlock.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
@@ -73,7 +78,14 @@ fun PeerLockNavHost(
         }
     }
 
-    NavHost(navController = navController, startDestination = startDestination) {
+    NavHost(
+        navController = navController,
+        startDestination = startDestination,
+        enterTransition = { slideInHorizontally(tween(200)) { it / 4 } + fadeIn(tween(200)) },
+        exitTransition = { slideOutHorizontally(tween(200)) { -it / 4 } + fadeOut(tween(200)) },
+        popEnterTransition = { slideInHorizontally(tween(200)) { -it / 4 } + fadeIn(tween(200)) },
+        popExitTransition = { slideOutHorizontally(tween(200)) { it / 4 } + fadeOut(tween(200)) },
+    ) {
 
         // === 初始化流程 ===
 
