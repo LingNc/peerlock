@@ -5,7 +5,9 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -98,16 +100,20 @@ fun QrScannerScreen(
 
     // 从相册选择
     val galleryLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
+        PickVisualMedia()
     ) { uri: Uri? ->
         uri?.let {
-            val bitmap = context.contentResolver.openInputStream(it)?.use { stream ->
-                BitmapFactory.decodeStream(stream)
-            }
-            bitmap?.let { bmp ->
-                val pixels = IntArray(bmp.width * bmp.height)
-                bmp.getPixels(pixels, 0, bmp.width, 0, 0, bmp.width, bmp.height)
-                val source = RGBLuminanceSource(bmp.width, bmp.height, pixels)
+            try {
+                val bitmap = context.contentResolver.openInputStream(it)?.use { stream ->
+                    BitmapFactory.decodeStream(stream)
+                }
+                if (bitmap == null) {
+                    Toast.makeText(context, "无法读取图片", Toast.LENGTH_SHORT).show()
+                    return@let
+                }
+                val pixels = IntArray(bitmap.width * bitmap.height)
+                bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+                val source = RGBLuminanceSource(bitmap.width, bitmap.height, pixels)
                 val binaryBitmap = BinaryBitmap(HybridBinarizer(source))
                 try {
                     val result = MultiFormatReader().decode(binaryBitmap)
@@ -115,7 +121,11 @@ fun QrScannerScreen(
                         hasResult = true
                         onResult(result.text)
                     }
-                } catch (_: Exception) {}
+                } catch (_: Exception) {
+                    Toast.makeText(context, "未识别到二维码", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "读取图片失败: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -247,7 +257,7 @@ fun QrScannerScreen(
                             Text("取消", color = Color.White)
                         }
                         IconButton(
-                            onClick = { galleryLauncher.launch("image/*") },
+                            onClick = { galleryLauncher.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly)) },
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
                                 .size(56.dp)
@@ -283,7 +293,7 @@ fun QrScannerScreen(
                         Text("授予权限")
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    TextButton(onClick = { galleryLauncher.launch("image/*") }) {
+                    TextButton(onClick = { galleryLauncher.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly)) }) {
                         Text("从相册选择")
                     }
                     Spacer(modifier = Modifier.height(8.dp))
