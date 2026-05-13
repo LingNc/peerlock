@@ -119,6 +119,14 @@ class StrategyManagementViewModel @Inject constructor(
                 lastModified = System.currentTimeMillis(),
             )
             storageRepository.upsertPolicy(policy)
+            storageRepository.insertAuditLog(
+                com.peerlock.domain.repository.AuditLog(
+                    timestamp = System.currentTimeMillis(),
+                    action = "POLICY_ADD",
+                    targetPackage = packageName,
+                    detail = "新增应用限制",
+                )
+            )
             loadData()
         }
     }
@@ -197,6 +205,14 @@ class StrategyManagementViewModel @Inject constructor(
                     policy.copy(
                         dailyLimitMinutes = change.dailyLimitMinutes,
                         lastModified = System.currentTimeMillis(),
+                    )
+                )
+                storageRepository.insertAuditLog(
+                    com.peerlock.domain.repository.AuditLog(
+                        timestamp = System.currentTimeMillis(),
+                        action = "POLICY_CHANGE",
+                        targetPackage = policy.targetPackage,
+                        detail = "日限制: ${change.dailyLimitMinutes}分钟",
                     )
                 )
             }

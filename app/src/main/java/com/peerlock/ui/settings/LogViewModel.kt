@@ -5,6 +5,8 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.peerlock.domain.repository.StorageRepository
 import com.peerlock.system.log.LogEntry
 import com.peerlock.system.log.LogLevel
 import com.peerlock.system.log.PeerLockLogger
@@ -13,6 +15,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class LogUiState(
@@ -21,11 +24,13 @@ data class LogUiState(
     val l2Unlocked: Boolean = false,
     val filterLevel: LogLevel? = null,
     val logs: List<LogEntry> = emptyList(),
+    val auditLogs: List<LogEntry> = emptyList(),
 )
 
 @HiltViewModel
 class LogViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val storageRepository: StorageRepository,
 ) : ViewModel() {
 
     companion object {
@@ -52,6 +57,7 @@ class LogViewModel @Inject constructor(
             l2Unlocked = l2Valid,
         )
         refreshLogs()
+        loadAuditLogs()
 
         // l2 过期后自动关闭
         if (l2Valid) {
@@ -95,6 +101,32 @@ class LogViewModel @Inject constructor(
         val advanced = _uiState.value.advanced
         val visible = if (advanced) filtered else filtered.filter { !it.isAdvanced }
         _uiState.value = _uiState.value.copy(logs = visible.reversed())
+        loadAuditLogs()
+    }
+
+    private fun loadAuditLogs() {
+        viewModelScope.launch {
+            val auditEntities = storageRepository.getRecentAuditLogs(200)
+            val auditEntries = auditEntities.map { entity ->
+                val level = when (entity.action) {
+                    "DESTROY", "EMERGENCY_L2" -> LogLevel.E
+                    "SAFE_MODE_ENTER" -> LogLevel.W
+                    else -> LogLevel.I
+                }
+                val detail = buildString {
+                    append(entity.action)
+                    entity.targetPackage?.let { append(" | $it") }
+                    entity.detail?.let { append(" | $it") }
+                }
+                LogEntry(
+                    timestamp = entity.timestamp,
+                    level = level,
+                    tag = "审计",
+                    message = detail,
+                )
+            }
+            _uiState.value = _uiState.value.copy(auditLogs = auditEntries)
+        }
     }
 
     fun clearLogs() {
@@ -103,9 +135,16 @@ class LogViewModel @Inject constructor(
     }
 
     fun copyToClipboard() {
-        val text = _uiState.value.logs.joinToString("\n") { entry ->
+        val debugText = _uiState.value.logs.joinToString("\n") { entry ->
             "${PeerLockLogger.formatTimestamp(entry.timestamp)} [${entry.level}] ${entry.tag}: ${entry.message}"
         }
+        val auditText = _uiState.value.auditLogs.joinToString("\n") { entry ->
+            "${PeerLockLogger.formatTimestamp(entry.timestamp)} [${entry.level}] ${entry.tag}: ${entry.message}"
+        }
+        val text = listOfNotNull(
+            if (debugText.isNotBlank()) "=== 调试日志 ===\n$debugText" else null,
+            if (auditText.isNotBlank()) "=== 审计日志 ===\n$auditText" else null,
+        ).joinToString("\n\n")
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("PeerLock Logs", text))
     }

@@ -160,18 +160,20 @@ fun LogScreen(
 
             // 日志计数
             Text(
-                text = "${uiState.logs.size} 条日志",
+                text = "调试 ${uiState.logs.size} 条 · 审计 ${uiState.auditLogs.size} 条",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            // 日志列表
+            // 合并日志列表（按时间倒序）
+            val mergedLogs = (uiState.logs + uiState.auditLogs).sortedByDescending { it.timestamp }
+
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                items(uiState.logs, key = { "${it.timestamp}_${it.tag}" }) { entry ->
+                items(mergedLogs, key = { "${it.timestamp}_${it.tag}_${it.message.hashCode()}" }) { entry ->
                     LogEntryRow(entry)
                 }
             }
